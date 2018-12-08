@@ -1,11 +1,12 @@
 import tensorflow as tf
 from keras import Input, Model
-from keras.layers import LSTM
+from keras.layers import LSTM, Conv2D
 from keras.utils.vis_utils import plot_model
 
 from layers.ConfidenceLayer import ConfidenceLayer
 
 from layers.Convert2ImageLayer import Convert2ImageLayer
+from layers.GraphLSTM import GraphLSTM
 
 IMAGE_SHAPE = (720, 1024, 3)
 SLIC_SHAPE = (IMAGE_SHAPE[0], IMAGE_SHAPE[1], 1)
@@ -19,10 +20,11 @@ def create_model():
     superpixels_input = Input(shape=(N_SUPERPIXELS, 3), name="Vertices")
 
     confidence_map = ConfidenceLayer(N_FEATURES, name="ConfidenceMap")(image_input)
-    lstm = LSTM(IMAGE_SHAPE[-1], return_sequences=True, name="LSTM")(superpixels_input)
-    concat_layer = Convert2ImageLayer(max_segments=N_SUPERPIXELS, name="ToImage")([lstm, slic_input])
+    lstm = GraphLSTM(IMAGE_SHAPE[-1], return_sequences=True, name="LSTM")(superpixels_input)
+    convert_layer = Convert2ImageLayer(max_segments=N_SUPERPIXELS, name="ToImage")([lstm, slic_input])
+    last = Conv2D(IMAGE_SHAPE[-1], kernel_size=1, padding="same", name="OutputConvolution")(convert_layer)
 
-    model = Model(inputs=[image_input, slic_input, superpixels_input], outputs=[confidence_map, concat_layer])
+    model = Model(inputs=[image_input, slic_input, superpixels_input], outputs=[confidence_map, last])
     model.summary()
     # plot_model(model)
 
