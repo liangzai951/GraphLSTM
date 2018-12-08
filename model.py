@@ -1,4 +1,7 @@
+import tensorflow as tf
 from keras import Input, Model
+from keras.layers import LSTM
+from keras.utils.vis_utils import plot_model
 
 from layers.ConfidenceLayer import ConfidenceLayer
 
@@ -16,10 +19,12 @@ def create_model():
     superpixels_input = Input(shape=(N_SUPERPIXELS, 3), name="Vertices")
 
     confidence_map = ConfidenceLayer(N_FEATURES, name="ConfidenceMap")(image_input)
-    concat_layer = Convert2ImageLayer(name="ToImage")([superpixels_input, slic_input])
+    lstm = LSTM(IMAGE_SHAPE[-1], return_sequences=True, name="LSTM")(superpixels_input)
+    concat_layer = Convert2ImageLayer(max_segments=N_SUPERPIXELS, name="ToImage")([lstm, slic_input])
 
     model = Model(inputs=[image_input, slic_input, superpixels_input], outputs=[confidence_map, concat_layer])
     model.summary()
+    # plot_model(model)
 
 
 if __name__ == '__main__':
