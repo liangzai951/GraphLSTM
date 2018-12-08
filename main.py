@@ -6,7 +6,10 @@ from utils import obtain_superpixels, get_confidence_map, get_neighbors, average
 
 if __name__ == '__main__':
     image = io.imread("lena.png")
-    segments = obtain_superpixels(image, 10, 5)
+    segments = obtain_superpixels(image, 10000, 5)
+    print(segments)
+    print(segments.shape)
+    print(type(segments))
     confidence_map = get_confidence_map(image, segments)
     neighbors = get_neighbors(segments)
     superpixels_vectors = average_rgb_for_superpixels(image, segments)
