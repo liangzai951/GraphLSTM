@@ -15,8 +15,9 @@ class Convert2ImageLayer(Layer):
 
     def call(self, inputs, **kwargs):
         graph_lstm_output, slic_output = inputs
+
         slic_transposed = slic_output - 1
-        self.matrix = K.placeholder(shape=tuple(slic_output.shape[:-1].as_list()) + (graph_lstm_output.shape[-1],))
+        self.matrix = K.placeholder(shape=tuple(slic_output.shape.as_list()) + (graph_lstm_output.shape[-1],))
         self.matrix *= 0
         for cycle in range(self.max_segments):
             self.matrix = self.matrix[:, :, :, :] + graph_lstm_output[:, cycle, :] * tf.cast(slic_transposed == 0, "float32")
@@ -26,7 +27,7 @@ class Convert2ImageLayer(Layer):
     def compute_output_shape(self, input_shape):
         self.__verify_input_shape(input_shape)
         graph_lstm_output, slic_output = input_shape
-        return slic_output[:-1] + (graph_lstm_output[-1],)
+        return slic_output + (graph_lstm_output[-1],)
 
     @staticmethod
     def __verify_input_shape(input_shape): assert isinstance(input_shape, list)

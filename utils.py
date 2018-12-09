@@ -27,7 +27,7 @@ def get_confidence_map(image, segments):
     return {i: random.uniform(a=0, b=1) for i in np.unique(segments)}
 
 
-def get_neighbors(segments):
+def get_neighbors(segments, n_segments):
     # get unique labels
     vertices = np.unique(segments)
     reverse_dict = dict(zip(vertices, np.arange(len(vertices))))
@@ -41,7 +41,12 @@ def get_neighbors(segments):
     edge_hash = all_edges[:, 0] + num_vertices * all_edges[:, 1]
     edges = [[vertices[x % num_vertices], vertices[x // num_vertices]] for x in np.unique(edge_hash)]
     e = {v: set([x[1] for x in edges if x[0] == v] + [x[0] for x in edges if x[1] == v]) for v in sorted(vertices)}
-    return e
+    matrix = np.zeros(shape=(n_segments, n_segments))
+    for start_node, neighbors in e.items():
+        for neighbor in neighbors:
+            matrix[start_node, neighbor] = 1
+            matrix[neighbor, start_node] = 1
+    return matrix
 
 
 def sort_values(values: dict, neighbors: dict, confidence_map: dict, mode="dfs"):
