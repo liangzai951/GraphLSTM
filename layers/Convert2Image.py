@@ -1,17 +1,16 @@
-import numpy
 import tensorflow as tf
 import keras.backend as K
 from keras.engine import Layer
 
 
-class Convert2ImageLayer(Layer):
+class Convert2Image(Layer):
     def __init__(self, max_segments, **kwargs):
-        super(Convert2ImageLayer, self).__init__(**kwargs)
+        super(Convert2Image, self).__init__(**kwargs)
         self.matrix = None
         self.max_segments = max_segments
 
     def build(self, input_shape):
-        super(Convert2ImageLayer, self).build(input_shape)
+        super(Convert2Image, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
         graph_lstm_output, slic_output = inputs

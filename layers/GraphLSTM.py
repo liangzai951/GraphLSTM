@@ -1,10 +1,9 @@
-from keras.layers import LSTM, interfaces, warnings, K, regularizers, RNN
+from keras.layers import warnings, K, regularizers, RNN
 
 from layers.GraphLSTMCell import GraphLSTMCell
 
 
 class GraphLSTM(RNN):
-    @interfaces.legacy_recurrent_support
     def __init__(self, units,
                  activation='tanh',
                  recurrent_activation='hard_sigmoid',
@@ -43,7 +42,7 @@ class GraphLSTM(RNN):
             recurrent_dropout = 0.
 
         cell = GraphLSTMCell(units,
-                             activation=activation,
+                             output_activation=activation,
                              recurrent_activation=recurrent_activation,
                              use_bias=use_bias,
                              kernel_initializer=kernel_initializer,
@@ -67,11 +66,3 @@ class GraphLSTM(RNN):
                                         unroll=unroll,
                                         **kwargs)
         self.activity_regularizer = regularizers.get(activity_regularizer)
-
-    def call(self, inputs, mask=None, training=None, initial_state=None):
-        self.cell._dropout_mask = None
-        self.cell._recurrent_dropout_mask = None
-        return super(GraphLSTM, self).call(inputs,
-                                           mask=mask,
-                                           training=training,
-                                           initial_state=initial_state)
