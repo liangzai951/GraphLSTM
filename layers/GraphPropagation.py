@@ -26,8 +26,7 @@ class GraphPropagation(Layer):
 
             first_confident = np.argmax(confidence_map, axis=0)
             new_vertices.append(vertices[first_confident])
-            # tf.logging.log(tf.logging.ERROR, new_vertices)
-            reverse_map.append(first_confident)
+            reverse_map.append(tf.convert_to_tensor(first_confident))
             for i in np.where(neighbors[first_confident] == 1.0)[0]:
                 if i in unvisited:
                     neighborhood.add(i)
@@ -42,7 +41,7 @@ class GraphPropagation(Layer):
                     first_confident = np.argmax(confidence_map, axis=0)
                 if first_confident in unvisited:
                     new_vertices.append(vertices[first_confident])
-                    reverse_map.append(first_confident)
+                    reverse_map.append(tf.convert_to_tensor(first_confident))
                     for i in np.where(neighbors[first_confident] == 1.0)[0]:
                         if i in unvisited:
                             neighborhood.add(i)

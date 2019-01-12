@@ -26,10 +26,9 @@ def create_model():
 
     graph_arranged_vertices, reverse_map = GraphPropagation(N_SUPERPIXELS, name="GraphPath")([superpixels_input, confidence_map, neighborhood_input])
 
-
     lstm = GraphLSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM")(graph_arranged_vertices)
-    new_vertcies = InverseGraphPropagation(name="InvGraphPath")([lstm, reverse_map])
-    convert_layer = Convert2Image(max_segments=N_SUPERPIXELS, name="ToImage")([new_vertcies, slic_input])
+    new_vertices = InverseGraphPropagation(name="InvGraphPath")([lstm, reverse_map])
+    convert_layer = Convert2Image(max_segments=N_SUPERPIXELS, name="ToImage")([new_vertices, slic_input])
 
     last = Conv2D(IMAGE_SHAPE[-1], kernel_size=1, padding="same", name="OutputConvolution")(convert_layer)
 

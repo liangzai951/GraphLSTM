@@ -18,8 +18,8 @@ class Convert2Image(Layer):
         slic_transposed = slic_output - 1
         self.matrix = K.placeholder(shape=tuple(slic_output.shape.as_list()) + (graph_lstm_output.shape[-1],))
         self.matrix *= 0
-        for cycle in range(self.max_segments):
-            self.matrix = self.matrix[:, :, :, :] + graph_lstm_output[:, cycle, :] * tf.cast(slic_transposed == 0, "float32")
+        for cycle in range(graph_lstm_output.shape[-2]):
+            self.matrix = self.matrix + graph_lstm_output[:, cycle, :] * tf.cast(slic_transposed == 0, "float32")
             slic_transposed -= 1
         return self.matrix
 
