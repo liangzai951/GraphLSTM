@@ -1,3 +1,4 @@
+import numpy
 from skimage.segmentation import mark_boundaries
 from skimage import io
 import matplotlib.pyplot as plt
@@ -8,7 +9,8 @@ from utils.utils import obtain_superpixels, get_confidence_map, get_neighbors, a
 if __name__ == '__main__':
     image = io.imread("lena.png")
     segments = obtain_superpixels(image, N_SUPERPIXELS, 5)
-    print(segments)
+    print(numpy.unique(segments.tolist()))
+
     print(segments.shape)
     neighbors = get_neighbors(segments, N_SUPERPIXELS)
     superpixels_vectors = average_rgb_for_superpixels(image, segments)

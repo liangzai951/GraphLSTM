@@ -13,3 +13,5 @@ VALSET_FILE = "./data/dataset/VOC2012/ImageSets/Segmentation/val.txt"
 
 IMAGES_PATH = "./data/dataset/VOC2012/JPEGImages/"
 VALIDATION_IMAGES = "./data/dataset/VOC2012/SegmentationObject/"
+
+OUTPUT_PATH = "./data/output/"
