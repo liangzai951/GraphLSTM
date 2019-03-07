@@ -2,7 +2,7 @@ from skimage.segmentation import mark_boundaries
 from skimage import io
 import matplotlib.pyplot as plt
 
-from utils import obtain_superpixels, get_confidence_map, get_neighbors, average_rgb_for_superpixels, sort_values
+from .utils import obtain_superpixels, get_confidence_map, get_neighbors, average_rgb_for_superpixels, sort_values
 
 if __name__ == '__main__':
     image = io.imread("lena.png")
