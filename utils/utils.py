@@ -6,16 +6,22 @@ import numpy as np
 from skimage import img_as_float
 from skimage.segmentation import slic
 
+from config import N_SUPERPIXELS, IMAGE_SHAPE
+
 
 def average_rgb_for_superpixels(image, segments):
-    averages = {}
+    averages = []
     for segment_value in np.unique(segments):
         mask = np.zeros(image.shape[:2], dtype="uint8")
         mask[segments == segment_value] = 255
         non_zero_pixels_amount = np.count_nonzero(mask)
         filtered = cv2.bitwise_and(image, image, mask=mask)
-        averages[segment_value] = [np.sum(filtered[:, :, c], axis=1).sum() / non_zero_pixels_amount for c in
-                                   range(filtered.shape[-1])]
+        averages.append(
+            [np.sum(filtered[:, :, c], axis=1).sum() / non_zero_pixels_amount
+             for c in
+             range(filtered.shape[-1])])
+    while len(averages) != N_SUPERPIXELS:
+        averages.append([0.0] * IMAGE_SHAPE[-1])
     return averages
 
 
@@ -31,7 +37,8 @@ def get_neighbors(segments, n_segments):
     # get unique labels
     vertices = np.unique(segments)
     reverse_dict = dict(zip(vertices, np.arange(len(vertices))))
-    segments = np.array([reverse_dict[x] for x in segments.flat]).reshape(segments.shape)
+    segments = np.array([reverse_dict[x] for x in segments.flat]).reshape(
+        segments.shape)
     down = np.c_[segments[:-1, :].ravel(), segments[1:, :].ravel()]
     right = np.c_[segments[:, :-1].ravel(), segments[:, 1:].ravel()]
     all_edges = np.vstack([right, down])
@@ -39,8 +46,11 @@ def get_neighbors(segments, n_segments):
     all_edges = np.sort(all_edges, axis=1)
     num_vertices = len(vertices)
     edge_hash = all_edges[:, 0] + num_vertices * all_edges[:, 1]
-    edges = [[vertices[x % num_vertices], vertices[x // num_vertices]] for x in np.unique(edge_hash)]
-    e = {v: set([x[1] for x in edges if x[0] == v] + [x[0] for x in edges if x[1] == v]) for v in sorted(vertices)}
+    edges = [[vertices[x % num_vertices], vertices[x // num_vertices]] for x in
+             np.unique(edge_hash)]
+    e = {v: set([x[1] for x in edges if x[0] == v] + [x[0] for x in edges if
+                                                      x[1] == v]) for v in
+         sorted(vertices)}
     matrix = np.zeros(shape=(n_segments, n_segments))
     for start_node, neighbors in e.items():
         for neighbor in neighbors:
@@ -49,14 +59,18 @@ def get_neighbors(segments, n_segments):
     return matrix
 
 
-def sort_values(values: dict, neighbors: dict, confidence_map: dict, mode="dfs"):
+def sort_values(values: dict, neighbors: dict, confidence_map: dict,
+                mode="dfs"):
     assert len(confidence_map) == len(values) == len(neighbors)
     if mode == "confidence":
-        sorted_vertices = sorted(confidence_map.items(), key=operator.itemgetter(1), reverse=True)
+        sorted_vertices = sorted(confidence_map.items(),
+                                 key=operator.itemgetter(1), reverse=True)
         sorted_vertices = [x[0] for x in sorted_vertices]
         return [values[v] for v in sorted_vertices]
     else:
-        start_vertex = sorted(confidence_map.items(), key=operator.itemgetter(1), reverse=True)[0][0]
+        start_vertex = \
+        sorted(confidence_map.items(), key=operator.itemgetter(1),
+               reverse=True)[0][0]
         visited, queue = set(), [start_vertex]
         result = []
         if mode == "bfs":
