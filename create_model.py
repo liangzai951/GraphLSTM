@@ -55,7 +55,7 @@ def create_model():
     # OPTIMIZER
     sgd = SGD(momentum=0.9, decay=0.0005)
     model.compile(sgd, loss="mse", metrics=["acc"])
-    model.save("glstm.hdf5")
+    model.save(MODEL_PATH)
 
 
 if __name__ == '__main__':
