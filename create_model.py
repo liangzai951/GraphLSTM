@@ -1,5 +1,5 @@
 from keras import Input, Model
-from keras.layers import Conv2D, Conv1D
+from keras.layers import Conv2D, Conv1D, LSTM
 from keras.optimizers import SGD
 from keras.utils.vis_utils import plot_model
 from config import *
@@ -24,7 +24,7 @@ def create_model():
     graph, reverse = GraphPropagation(N_SUPERPIXELS, name="GraphPath")([superpixels, confidence, neighbors])
 
     # MAIN LSTM PART
-    lstm = GraphLSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM")(graph)
+    lstm = LSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM")(graph)
 
     # INVERSE GRAPH PROPAGATION
     out_vertices = InverseGraphPropagation(name="InvGraphPath")([lstm, reverse])
@@ -56,7 +56,7 @@ def create_model():
     sgd = SGD(momentum=0.9, decay=0.0005)
     model.compile(sgd, loss="mse", metrics=["acc"])
     model.save(MODEL_PATH)
-
+    return model
 
 if __name__ == '__main__':
     create_model()

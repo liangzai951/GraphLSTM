@@ -33,3 +33,8 @@ class InverseGraphPropagation(Layer):
         assert isinstance(input_shape, list)
         vertices, reverse_map = input_shape
         assert vertices[1] == reverse_map[1]
+
+    def get_config(self):
+        config = {}
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(config.items()))

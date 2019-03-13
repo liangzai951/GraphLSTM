@@ -64,3 +64,8 @@ class GraphPropagation(Layer):
         assert isinstance(input_shape, list)
         vertices, confidence_map, neighbors = input_shape
         assert vertices[1] == confidence_map[1] == neighbors[1] == neighbors[2]
+
+    def get_config(self):
+        config = {'n_vertices': self.n_vertices}
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(config.items()))

@@ -15,3 +15,10 @@ IMAGES_PATH = "./data/dataset/VOC2012/JPEGImages/"
 VALIDATION_IMAGES = "./data/dataset/VOC2012/SegmentationObject/"
 
 OUTPUT_PATH = "./data/output/"
+
+
+TRAIN_ELEMS = 1464
+TRAIN_BATCH_SIZE = 2
+
+VALIDATION_ELEMS = 2913
+VALIDATION_BATCH_SIZE = 1
