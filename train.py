@@ -1,11 +1,18 @@
 from random import shuffle
 
+import numpy
 from skimage import io
 
 from keras.callbacks import TerminateOnNaN, ModelCheckpoint, TensorBoard
 from keras.engine.saving import load_model
 
 from config import *
+from create_model import create_model
+from layers.GraphLSTM import GraphLSTM
+from layers.GraphLSTMCell import GraphLSTMCell
+from layers.GraphPropagation import GraphPropagation
+from layers.ConfidenceLayer import Confidence
+from layers.InverseGraphPropagation import InverseGraphPropagation
 from utils.utils import obtain_superpixels, get_neighbors, \
     average_rgb_for_superpixels
 
@@ -23,43 +30,60 @@ def init_callbacks():
 
 
 def generator():
-    with open(TRAINSET_FILE) as f:
-        image_list = [line for line in f]
-        shuffle(image_list)
-    for image_name in image_list:
-        img = io.imread(IMAGES_PATH + image_name + ".jpg")
-        expected = io.imread(VALIDATION_IMAGES + image_name + ".png")
-        slic = obtain_superpixels(img, N_SUPERPIXELS, SLIC_SIGMA)
-        vertices = average_rgb_for_superpixels(img, slic)
-        neighbors = get_neighbors(slic, N_SUPERPIXELS)
-        expected = average_rgb_for_superpixels(expected, slic)
-        yield ([img, slic, vertices, neighbors], [expected])
+    while True:
+        with open(TRAINSET_FILE) as f:
+            image_list = [line.replace("\n", "") for line in f]
+            shuffle(image_list)
+        for image_name in image_list:
+            img = io.imread(IMAGES_PATH + image_name + ".jpg")
+            expected = io.imread(VALIDATION_IMAGES + image_name + ".png")
+            slic = obtain_superpixels(img, N_SUPERPIXELS, SLIC_SIGMA)
+            vertices = average_rgb_for_superpixels(img, slic)
+            neighbors = get_neighbors(slic, N_SUPERPIXELS)
+            expected = average_rgb_for_superpixels(expected, slic)
+            img = numpy.expand_dims(numpy.array(img), axis=0)
+            expected = numpy.expand_dims(numpy.array(expected), axis=0)
+            slic = numpy.expand_dims(numpy.array(slic), axis=0)
+            vertices = numpy.expand_dims(numpy.array(vertices), axis=0)
+            neighbors = numpy.expand_dims(numpy.array(neighbors), axis=0)
+            yield ([img, slic, vertices, neighbors], [expected])
 
 
 def validation_generator():
-    with open(TRAINVALSET_FILE) as f:
-        image_list = [line for line in f]
-        shuffle(image_list)
-    for image_name in image_list:
-        img = io.imread(IMAGES_PATH + image_name + ".jpg")
-        expected = io.imread(VALIDATION_IMAGES + image_name + ".png")
-        slic = obtain_superpixels(img, N_SUPERPIXELS, SLIC_SIGMA)
-        vertices = average_rgb_for_superpixels(img, slic)
-        neighbors = get_neighbors(slic, N_SUPERPIXELS)
-        expected = average_rgb_for_superpixels(expected, slic)
-        yield ([img, slic, vertices, neighbors], [expected])
+    while True:
+        with open(TRAINVALSET_FILE) as f:
+            image_list = [line.replace("\n", "") for line in f]
+            shuffle(image_list)
+        for image_name in image_list:
+            img = io.imread(IMAGES_PATH + image_name + ".jpg")
+            expected = io.imread(VALIDATION_IMAGES + image_name + ".png")
+            slic = obtain_superpixels(img, N_SUPERPIXELS, SLIC_SIGMA)
+            vertices = average_rgb_for_superpixels(img, slic)
+            neighbors = get_neighbors(slic, N_SUPERPIXELS)
+            expected = average_rgb_for_superpixels(expected, slic)
+            img = numpy.expand_dims(numpy.array(img), axis=0)
+            expected = numpy.expand_dims(numpy.array(expected), axis=0)
+            slic = numpy.expand_dims(numpy.array(slic), axis=0)
+            vertices = numpy.expand_dims(numpy.array(vertices), axis=0)
+            neighbors = numpy.expand_dims(numpy.array(neighbors), axis=0)
+            yield ([img, slic, vertices, neighbors], [expected])
 
 
 if __name__ == '__main__':
     callbacks = init_callbacks()
-    model = load_model(MODEL_PATH)
-    model.fit_generator(generator,
-                        steps_per_epoch=None,
+    model = load_model(MODEL_PATH,
+                       custom_objects={'Confidence': Confidence,
+                                       'GraphPropagation': GraphPropagation,
+                                       'InverseGraphPropagation': InverseGraphPropagation})
+    # model = create_model()
+    model.fit_generator(generator(),
+                        steps_per_epoch=numpy.ceil(
+                            TRAIN_ELEMS / TRAIN_BATCH_SIZE),
                         epochs=100,
                         verbose=1,
                         callbacks=callbacks,
-                        validation_data=validation_generator,
-                        max_queue_size=10,
-                        workers=3,
-                        use_multiprocessing=True,
+                        validation_data=validation_generator(),
+                        validation_steps=numpy.ceil(
+                            VALIDATION_ELEMS / VALIDATION_BATCH_SIZE),
+                        max_queue_size=2,
                         shuffle=True)

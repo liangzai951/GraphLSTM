@@ -1,11 +1,12 @@
 from keras.engine import Layer
-from keras.layers import activations, initializers, regularizers, constraints, K, LSTMCell
+from keras.layers import activations, initializers, regularizers, constraints, \
+    K, LSTMCell
 from keras.layers.recurrent import _generate_dropout_mask
 
 
 class GraphLSTMCell(Layer):
     def __init__(self, units,
-                 output_activation='tanh',
+                 activation='tanh',
                  recurrent_activation='sigmoid',
                  use_bias=True,
                  kernel_initializer='glorot_uniform',
@@ -24,7 +25,7 @@ class GraphLSTMCell(Layer):
                  **kwargs):
         super(GraphLSTMCell, self).__init__(**kwargs)
         self.units = units
-        self.activation = activations.get(output_activation)
+        self.activation = activations.get(activation)
         self.recurrent_activation = activations.get(recurrent_activation)
         self.use_bias = use_bias
 
@@ -50,6 +51,7 @@ class GraphLSTMCell(Layer):
         self._recurrent_dropout_mask = None
 
     def build(self, input_shape):
+        print(self.units)
         input_dim = input_shape[-1]
         self.W = self.add_weight(shape=(input_dim, self.units * 4),
                                  name='kernel',
@@ -76,7 +78,8 @@ class GraphLSTMCell(Layer):
                     return K.concatenate([
                         self.bias_initializer((self.units,), *args, **kwargs),
                         initializers.Ones()((self.units,), *args, **kwargs),
-                        self.bias_initializer((self.units * 2,), *args, **kwargs),
+                        self.bias_initializer((self.units * 2,), *args,
+                                              **kwargs),
                     ])
             else:
                 bias_initializer = self.bias_initializer
@@ -190,11 +193,43 @@ class GraphLSTMCell(Layer):
         f_avg = self.recurrent_activation(x_f + z_f)
         c = self.activation(x_c + y_c + z_c)
         o = self.recurrent_activation(x_o + y_o + z_o)
-        
-        m = K.mean(f_avg * m_tm1) + f * m_tm1 + u * c  # TODO: ADD visited & unvisited
-        h = self.activation(o*m)
+
+        m = K.mean(
+            f_avg * m_tm1) + f * m_tm1 + u * c  # TODO: ADD visited & unvisited
+        h = self.activation(o * m)
         avg_m = K.mean(h)  # TODO: modify
         if 0 < self.dropout + self.recurrent_dropout:
             if training is None:
                 h._uses_learning_phase = True
         return h, [h, m]
+
+    def get_config(self):
+        config = {'units': self.units,
+                  'activation': activations.serialize(self.activation),
+                  'recurrent_activation':
+                      activations.serialize(self.recurrent_activation),
+                  'use_bias': self.use_bias,
+                  'kernel_initializer':
+                      initializers.serialize(self.kernel_initializer),
+                  'recurrent_initializer':
+                      initializers.serialize(self.recurrent_initializer),
+                  'bias_initializer': initializers.serialize(
+                      self.bias_initializer),
+                  'unit_forget_bias': self.unit_forget_bias,
+                  'kernel_regularizer':
+                      regularizers.serialize(self.kernel_regularizer),
+                  'recurrent_regularizer':
+                      regularizers.serialize(self.recurrent_regularizer),
+                  'bias_regularizer': regularizers.serialize(
+                      self.bias_regularizer),
+                  'kernel_constraint': constraints.serialize(
+                      self.kernel_constraint),
+                  'recurrent_constraint':
+                      constraints.serialize(self.recurrent_constraint),
+                  'bias_constraint': constraints.serialize(
+                      self.bias_constraint),
+                  'dropout': self.dropout,
+                  'recurrent_dropout': self.recurrent_dropout,
+                  'implementation': self.implementation}
+        base_config = super(GraphLSTMCell, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
