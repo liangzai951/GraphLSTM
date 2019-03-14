@@ -51,7 +51,7 @@ class GraphPropagation(Layer):
 
             return K.stack(new_vertices), K.stack(reverse_map)
 
-        v, m = K.map_fn(graph_propagation, (inputs[0], inputs[1], inputs[2]), dtype=(tf.float32, tf.int32))
+        v, m = K.map_fn(graph_propagation, (inputs[0], inputs[1], inputs[2]), dtype=(tf.float32, tf.int64))
         return [v, m]
 
     def compute_output_shape(self, input_shape):

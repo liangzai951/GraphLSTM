@@ -5,6 +5,7 @@ from skimage import io
 
 from keras.callbacks import TerminateOnNaN, ModelCheckpoint, TensorBoard
 from keras.engine.saving import load_model
+from skimage.transform import resize
 
 from config import *
 from create_model import create_model
@@ -29,61 +30,51 @@ def init_callbacks():
     return [terminator, checkpointer, tensorboard]
 
 
-def generator():
+def generator(image_list, images_path, expected_images):
     while True:
-        with open(TRAINSET_FILE) as f:
-            image_list = [line.replace("\n", "") for line in f]
-            shuffle(image_list)
+        shuffle(image_list)
         for image_name in image_list:
-            img = io.imread(IMAGES_PATH + image_name + ".jpg")
-            expected = io.imread(VALIDATION_IMAGES + image_name + ".png")
+            # LOAD IMAGES
+            img = resize(io.imread(images_path + image_name + ".jpg"), IMAGE_SHAPE, anti_aliasing=True)
+            expected = resize(io.imread(expected_images + image_name + ".png"), IMAGE_SHAPE, anti_aliasing=True)
+
+            # OBTAIN OTHER USEFUL DATA
             slic = obtain_superpixels(img, N_SUPERPIXELS, SLIC_SIGMA)
             vertices = average_rgb_for_superpixels(img, slic)
             neighbors = get_neighbors(slic, N_SUPERPIXELS)
             expected = average_rgb_for_superpixels(expected, slic)
+
+            # TO NUMPIES
             img = numpy.expand_dims(numpy.array(img), axis=0)
             expected = numpy.expand_dims(numpy.array(expected), axis=0)
             slic = numpy.expand_dims(numpy.array(slic), axis=0)
             vertices = numpy.expand_dims(numpy.array(vertices), axis=0)
             neighbors = numpy.expand_dims(numpy.array(neighbors), axis=0)
-            yield ([img, slic, vertices, neighbors], [expected])
 
-
-def validation_generator():
-    while True:
-        with open(TRAINVALSET_FILE) as f:
-            image_list = [line.replace("\n", "") for line in f]
-            shuffle(image_list)
-        for image_name in image_list:
-            img = io.imread(IMAGES_PATH + image_name + ".jpg")
-            expected = io.imread(VALIDATION_IMAGES + image_name + ".png")
-            slic = obtain_superpixels(img, N_SUPERPIXELS, SLIC_SIGMA)
-            vertices = average_rgb_for_superpixels(img, slic)
-            neighbors = get_neighbors(slic, N_SUPERPIXELS)
-            expected = average_rgb_for_superpixels(expected, slic)
-            img = numpy.expand_dims(numpy.array(img), axis=0)
-            expected = numpy.expand_dims(numpy.array(expected), axis=0)
-            slic = numpy.expand_dims(numpy.array(slic), axis=0)
-            vertices = numpy.expand_dims(numpy.array(vertices), axis=0)
-            neighbors = numpy.expand_dims(numpy.array(neighbors), axis=0)
             yield ([img, slic, vertices, neighbors], [expected])
 
 
 if __name__ == '__main__':
     callbacks = init_callbacks()
+
+    with open(TRAINSET_FILE) as f:
+        train_image_list = [line.replace("\n", "") for line in f]
+    with open(TRAINVALSET_FILE) as f:
+        val_image_list = [line.replace("\n", "") for line in f]
+
     model = load_model(MODEL_PATH,
                        custom_objects={'Confidence': Confidence,
                                        'GraphPropagation': GraphPropagation,
                                        'InverseGraphPropagation': InverseGraphPropagation})
     # model = create_model()
-    model.fit_generator(generator(),
+    model.fit_generator(generator(train_image_list, IMAGES_PATH, VALIDATION_IMAGES),
                         steps_per_epoch=numpy.ceil(
                             TRAIN_ELEMS / TRAIN_BATCH_SIZE),
                         epochs=100,
                         verbose=1,
                         callbacks=callbacks,
-                        validation_data=validation_generator(),
+                        validation_data=generator(val_image_list, IMAGES_PATH, VALIDATION_IMAGES),
                         validation_steps=numpy.ceil(
                             VALIDATION_ELEMS / VALIDATION_BATCH_SIZE),
-                        max_queue_size=2,
+                        max_queue_size=10,
                         shuffle=True)
