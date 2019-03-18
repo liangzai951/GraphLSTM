@@ -17,6 +17,9 @@ def create_model():
     superpixels = Input(shape=(N_SUPERPIXELS, IMAGE_SHAPE[2]), name="Vertices")
     neighbors = Input(shape=(N_SUPERPIXELS, N_SUPERPIXELS), name="Neighborhood")
 
+    # IMAGE CONVOLUTION
+    # conv1 = Conv2D(16, 3, padding='same')(image)
+
     # CONFIDENCE MAP
     confidence = Confidence(N_SUPERPIXELS, name="ConfidenceMap")([image, slic])
 
@@ -50,13 +53,14 @@ def create_model():
     model.summary()
 
     # PLOT
-    # plot_model(model, show_shapes=True)
+    plot_model(model, show_shapes=True)
 
     # OPTIMIZER
     sgd = SGD(momentum=0.9, decay=0.0005)
     model.compile(sgd, loss="mse", metrics=["acc"])
     model.save(MODEL_PATH)
     return model
+
 
 if __name__ == '__main__':
     create_model()

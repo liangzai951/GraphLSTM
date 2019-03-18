@@ -41,11 +41,11 @@ if __name__ == '__main__':
             if segment_num not in numpy.unique(slic):
                 break
             mask = numpy.zeros(slic[0, :, :].shape + (3,), dtype="uint8")
-            mask[slic[0, :, :] == segment_num] = output_vertices[0, segment_num]
+            mask[slic[0, :, :] == segment_num] = 255 * output_vertices[0, segment_num]
             output_image += mask
 
         output_image = resize(output_image, shape, anti_aliasing=True)
-        output_image = numpy.clip(output_image, 0, 255)
+        output_image = numpy.clip(output_image * 255, 0, 255)
         i = numpy.concatenate((image, output_image), axis=1)
         output = numpy.clip(i, 0, 255)
         output = output.astype(numpy.uint8)

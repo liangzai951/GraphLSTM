@@ -24,7 +24,7 @@ def init_callbacks():
         "./data/checkpoints/model_{epoch:02d}_{val_acc:.2f}.hdf5",
         monitor="val_acc",
         save_best_only=True, save_weights_only=False, mode="max", period=1)
-    tensorboard = TensorBoard(log_dir="./logs", histogram_freq=1,
+    tensorboard = TensorBoard(log_dir="./logs", histogram_freq=0,
                               batch_size=32, write_graph=True,
                               write_grads=True)
     return [terminator, checkpointer, tensorboard]
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     model.fit_generator(generator(train_image_list, IMAGES_PATH, VALIDATION_IMAGES),
                         steps_per_epoch=numpy.ceil(
                             TRAIN_ELEMS / TRAIN_BATCH_SIZE),
-                        epochs=100,
+                        epochs=1,
                         verbose=1,
                         callbacks=callbacks,
                         validation_data=generator(val_image_list, IMAGES_PATH, VALIDATION_IMAGES),
@@ -78,3 +78,4 @@ if __name__ == '__main__':
                             VALIDATION_ELEMS / VALIDATION_BATCH_SIZE),
                         max_queue_size=10,
                         shuffle=True)
+    model.save(MODEL_PATH)
