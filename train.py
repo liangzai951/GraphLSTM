@@ -1,5 +1,3 @@
-from random import shuffle
-
 import numpy
 from skimage import io
 
@@ -30,10 +28,15 @@ def init_callbacks():
     return [terminator, checkpointer, tensorboard]
 
 
-def generator(image_list, images_path, expected_images):
+def generator(image_list, images_path, expected_images, size=1):
     while True:
-        shuffle(image_list)
-        for image_name in image_list:
+        batch_names = numpy.random.choice(image_list, size=size)
+        batch_img = []
+        batch_expected = []
+        batch_slic = []
+        batch_vertices = []
+        batch_neighbors = []
+        for image_name in batch_names:
             # LOAD IMAGES
             img = resize(io.imread(images_path + image_name + ".jpg"), IMAGE_SHAPE, anti_aliasing=True)
             expected = resize(io.imread(expected_images + image_name + ".png"), IMAGE_SHAPE, anti_aliasing=True)
@@ -44,14 +47,18 @@ def generator(image_list, images_path, expected_images):
             neighbors = get_neighbors(slic, N_SUPERPIXELS)
             expected = average_rgb_for_superpixels(expected, slic)
 
-            # TO NUMPIES
-            img = numpy.expand_dims(numpy.array(img), axis=0)
-            expected = numpy.expand_dims(numpy.array(expected), axis=0)
-            slic = numpy.expand_dims(numpy.array(slic), axis=0)
-            vertices = numpy.expand_dims(numpy.array(vertices), axis=0)
-            neighbors = numpy.expand_dims(numpy.array(neighbors), axis=0)
-
-            yield ([img, slic, vertices, neighbors], [expected])
+            # ADD TO BATCH
+            batch_img += [img]
+            batch_expected += [expected]
+            batch_slic += [slic]
+            batch_vertices += [vertices]
+            batch_neighbors += [neighbors]
+        batch_img = numpy.array(batch_img)
+        batch_expected = numpy.array(batch_expected)
+        batch_slic = numpy.array(batch_slic)
+        batch_vertices = numpy.array(batch_vertices)
+        batch_neighbors = numpy.array(batch_neighbors)
+        yield ([batch_img, batch_slic, batch_vertices, batch_neighbors], [batch_expected])
 
 
 if __name__ == '__main__':
@@ -67,15 +74,15 @@ if __name__ == '__main__':
                                        'GraphPropagation': GraphPropagation,
                                        'InverseGraphPropagation': InverseGraphPropagation})
     # model = create_model()
-    model.fit_generator(generator(train_image_list, IMAGES_PATH, VALIDATION_IMAGES),
+    model.fit_generator(generator(train_image_list, IMAGES_PATH, VALIDATION_IMAGES, TRAIN_BATCH_SIZE),
                         steps_per_epoch=numpy.ceil(
-                            TRAIN_ELEMS / TRAIN_BATCH_SIZE),
-                        epochs=1,
+                            TRAIN_ELEMS / (TRAIN_BATCH_SIZE*48)),
+                        epochs=7,
                         verbose=1,
                         callbacks=callbacks,
-                        validation_data=generator(val_image_list, IMAGES_PATH, VALIDATION_IMAGES),
+                        validation_data=generator(val_image_list, IMAGES_PATH, VALIDATION_IMAGES, VALIDATION_BATCH_SIZE),
                         validation_steps=numpy.ceil(
-                            VALIDATION_ELEMS / VALIDATION_BATCH_SIZE),
+                            VALIDATION_ELEMS / (VALIDATION_BATCH_SIZE*48)),
                         max_queue_size=10,
                         shuffle=True)
     model.save(MODEL_PATH)

@@ -21,6 +21,7 @@ class InverseGraphPropagation(Layer):
             return new_vertices
 
         result = K.map_fn(inv_mapper, (inputs[0], inputs[1]), dtype=tf.float32)
+        # tf.logging.log(tf.logging.ERROR, result)
         return result
 
     def compute_output_shape(self, input_shape):

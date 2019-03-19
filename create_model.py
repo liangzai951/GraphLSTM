@@ -18,21 +18,26 @@ def create_model():
     neighbors = Input(shape=(N_SUPERPIXELS, N_SUPERPIXELS), name="Neighborhood")
 
     # IMAGE CONVOLUTION
-    # conv1 = Conv2D(16, 3, padding='same')(image)
+    conv1 = Conv2D(8, 5, padding='same')(image)
+    conv1b = Conv2D(8, 3, padding='same')(conv1)
+    conv2 = Conv2D(32, 3, padding='same')(conv1b)
+    conv3 = Conv2D(96, 3, padding='same')(conv2)
 
     # CONFIDENCE MAP
-    confidence = Confidence(N_SUPERPIXELS, name="ConfidenceMap")([image, slic])
+    confidence = Confidence(N_SUPERPIXELS, name="ConfidenceMap")([conv3, slic])
 
     # GRAPH PROPAGATION
     graph, reverse = GraphPropagation(N_SUPERPIXELS, name="GraphPath")([superpixels, confidence, neighbors])
 
     # MAIN LSTM PART
     lstm = LSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM")(graph)
+    # lstm2 = LSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM2")(lstm)
 
     # INVERSE GRAPH PROPAGATION
     out_vertices = InverseGraphPropagation(name="InvGraphPath")([lstm, reverse])
 
     out = Conv1D(IMAGE_SHAPE[-1], 1, name="OutputConv")(out_vertices)
+    # out = out_vertices
 
     # # TO IMAGE CONVERSION
     # to_image = Convert2Image(max_segments=N_SUPERPIXELS, name="ToImage")([out_vertices, slic])

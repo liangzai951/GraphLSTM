@@ -2,10 +2,10 @@ import numpy
 from keras.engine.saving import load_model
 from skimage import io
 from skimage.transform import resize
-from skimage.util import montage, montage2d
+from tqdm import tqdm
 
 from config import MODEL_PATH, VALSET_FILE, IMAGES_PATH, N_SUPERPIXELS, \
-    SLIC_SIGMA, OUTPUT_PATH, IMAGE_SHAPE
+    SLIC_SIGMA, OUTPUT_PATH, IMAGE_SHAPE, VALIDATION_IMAGES
 from layers.ConfidenceLayer import Confidence
 from layers.GraphPropagation import GraphPropagation
 from layers.InverseGraphPropagation import InverseGraphPropagation
@@ -19,7 +19,7 @@ if __name__ == '__main__':
     model = load_model(MODEL_PATH, custom_objects={'Confidence': Confidence,
                                                    'GraphPropagation': GraphPropagation,
                                                    'InverseGraphPropagation': InverseGraphPropagation})
-    for image_name in image_list:
+    for image_name in tqdm(image_list):
         image = io.imread(IMAGES_PATH + image_name + ".jpg")
         shape = image.shape
         img = resize(image, IMAGE_SHAPE, anti_aliasing=True)
@@ -37,16 +37,17 @@ if __name__ == '__main__':
 
         slic_out = slic
         output_image = numpy.zeros(img[0].shape, dtype="uint8")
-        for segment_num in range(len(output_vertices)):
+        for segment_num in range(output_vertices.shape[1]):
             if segment_num not in numpy.unique(slic):
                 break
             mask = numpy.zeros(slic[0, :, :].shape + (3,), dtype="uint8")
-            mask[slic[0, :, :] == segment_num] = 255 * output_vertices[0, segment_num]
+            mask[slic[0, :, :] == segment_num] = 255 * output_vertices[0, segment_num, :]
             output_image += mask
 
         output_image = resize(output_image, shape, anti_aliasing=True)
         output_image = numpy.clip(output_image * 255, 0, 255)
-        i = numpy.concatenate((image, output_image), axis=1)
+        expected_image = io.imread(VALIDATION_IMAGES + image_name + ".png")
+        i = numpy.concatenate((image, expected_image, output_image), axis=1)
         output = numpy.clip(i, 0, 255)
         output = output.astype(numpy.uint8)
         io.imsave(OUTPUT_PATH + image_name + ".png", output)
