@@ -11,21 +11,22 @@ class Confidence(Layer):
     def build(self, input_shape): super(Confidence, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
-        def mapper(inp):
+        def mapper(inp, n_segments):
             image = inp[0]
             slic_output = inp[1]
             slic_transposed = slic_output - 1
             cycles_list = []
-            for cycle in range(self.n_segments):
+            for cycle in range(n_segments):
                 # get segment
-                segment = image*tf.cast(slic_transposed == 0, "float32")
+                mask = tf.cast(slic_transposed == 0, "float32")
+                segment = image * mask
                 # get average
                 avg = K.sum(segment, axis=[0, 1])/tf.math.count_nonzero(segment, axis=[0, 1], dtype="float32")
                 # insert into matrix
                 cycles_list.append(avg)
                 slic_transposed -= 1
             return K.stack(cycles_list)
-        r = K.map_fn(lambda x: mapper(x), (inputs[0], inputs[1]), dtype=tf.float32)
+        r = K.map_fn(lambda x: mapper(x, self.n_segments), (inputs[0], inputs[1]), dtype=tf.float32)
         # tf.logging.log(tf.logging.ERROR, r)
         return r
 
