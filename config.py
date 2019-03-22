@@ -1,5 +1,5 @@
 MODEL_PATH = "glstm.hdf5"
-# MODEL_PATH = "./data/checkpoints/model_01_0.13.hdf5"
+# MODEL_PATH = "./data/checkpoints/model_10_0.88.hdf5"
 
 IMAGE_SHAPE = (500, 500, 3)
 SLIC_SHAPE = (IMAGE_SHAPE[0], IMAGE_SHAPE[1])

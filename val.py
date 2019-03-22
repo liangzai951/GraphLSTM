@@ -33,7 +33,7 @@ if __name__ == '__main__':
         vertices = numpy.expand_dims(numpy.array(vertices), axis=0)
         neighbors = numpy.expand_dims(numpy.array(neighbors), axis=0)
 
-        output_vertices = model.predict_on_batch([img, slic, vertices, neighbors])
+        output_vertices, _ = model.predict_on_batch([img, slic, vertices, neighbors])
 
         slic_out = slic
         output_image = numpy.zeros(img[0].shape, dtype="uint8")
