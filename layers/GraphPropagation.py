@@ -15,53 +15,43 @@ class GraphPropagation(Layer):
     def call(self, inputs, **kwargs):
 
         def graph_propagation(input_tuple):
-            vertices = input_tuple[0]
-            confidence_map = K.max(input_tuple[1], axis=-1, keepdims=False)
-            neighbors = input_tuple[2]
+            confidence, neighborhood, vertices_batch = input_tuple
 
-            reverse_map = tf.argsort(confidence_map, axis=0, direction='DESCENDING')
-            new_vertices = tf.gather(vertices, reverse_map)
+            neighborhood = K.mean(neighborhood, axis=-1)
+            confidence = K.tf.add(confidence, neighborhood)
+            maping = tf.argsort(confidence, axis=0, direction='DESCENDING')
+            new_vertices = tf.gather(vertices_batch, maping)
+            reverse_mapping = tf.argsort(maping, axis=0, direction='ASCENDING')
+            return new_vertices, reverse_mapping
 
-            return new_vertices, reverse_map
-
-            # unvisited = {i for i in range(vertices.shape[0])}
-            # new_vertices = []
-            # reverse_map = []
-            # neighborhood = set()
+            # mapping_list = []
+            # neighbors = set()
             #
-            # first_confident = K.argmax(confidence_map, axis=0)
-            # new_vertices.append(vertices[first_confident])
-            # reverse_map.append(K.tf.convert_to_tensor(first_confident))
-            # for i in np.where(neighbors[first_confident] == 1.0)[0]:
-            #     if i in unvisited:
-            #         neighborhood.add(i)
-            # confidence_map = confidence_map * K.cast(confidence_map != confidence_map[first_confident], "float32")
-            # unvisited.discard(first_confident)
-            # tf.logging.log(tf.logging.ERROR, len(unvisited))
-            # num = 1
-            # while unvisited and num < self.n_vertices:
-            #     if neighborhood:
-            #         first_confident = sorted([(confidence_map[i], i) for i in neighborhood], key=lambda x: x[0])[-1][-1]
-            #         neighborhood.remove(first_confident)
+            # while len(mapping_list) != len(K.tf.unstack(confidence)):
+            #     if not neighbors:
+            #         first_confident = K.argmax(confidence, axis=0)
             #     else:
-            #         first_confident = K.argmax(confidence_map, axis=0)
-            #     if first_confident in unvisited:
-            #         new_vertices.append(vertices[first_confident])
-            #         reverse_map.append(K.tf.convert_to_tensor(first_confident))
-            #         for i in np.where(neighbors[first_confident] == 1.0)[0]:
-            #             if i in unvisited:
-            #                 neighborhood.add(i)
-            #         confidence_map = confidence_map * K.cast(confidence_map != confidence_map[first_confident], "float32")
-            #         unvisited.discard(first_confident)
-            #     num += 1
-            # tf.logging.log(tf.logging.ERROR, new_vertices)
-            # tf.logging.log(tf.logging.ERROR, reverse_map)
-            # return K.stack(new_vertices), K.stack(reverse_map)
+            #         temp_indices = K.variable(np.array(list(neighbors)))
+            #         sub_confidence = K.gather(confidence, temp_indices)
+            #         first_confident = K.argmax(sub_confidence, axis=0)
+            #         neighbors.remove(first_confident)
+            #     if first_confident not in mapping_list:
+            #         mapping_list.append(first_confident)
+            #         neighbors_4_first_confident = K.squeeze(K.tf.where(K.tf.equal(neighborhood[first_confident, :], K.constant(1.0))), axis=-1)
+            #         print(neighbors_4_first_confident)
+            #         neighbors_set = []
+            #
+            #
+            # mapping_tensor = K.stack(mapping_list)
+            # new_vertices = K.gather(vertices_batch, mapping_tensor)
+            #
+            # return new_vertices, mapping_tensor
 
-        v, m = K.map_fn(graph_propagation, (inputs[0], inputs[1], inputs[2]), dtype=(tf.float32, tf.int32))
-        # tf.logging.log(tf.logging.ERROR, v)
-        # tf.logging.log(tf.logging.ERROR, m)
-        return [v, m]
+        vertices = inputs[0]
+        confidence_map = K.max(inputs[1], axis=-1, keepdims=False)
+        neighborhood_matrix = inputs[2]
+        v, mapping = K.map_fn(graph_propagation, (confidence_map, neighborhood_matrix, vertices), dtype=(tf.float32, tf.int32))
+        return [v, mapping]
 
     def compute_output_shape(self, input_shape):
         self.__verify_input_shape(input_shape)
