@@ -16,13 +16,15 @@ class GraphPropagation(Layer):
 
         def graph_propagation(input_tuple):
             confidence, neighborhood, vertices_batch = input_tuple
-
-            neighborhood = K.mean(neighborhood, axis=-1)
-            confidence = K.tf.add(confidence, neighborhood)
-            maping = tf.argsort(confidence, axis=0, direction='DESCENDING')
-            new_vertices = tf.gather(vertices_batch, maping)
-            reverse_mapping = tf.argsort(maping, axis=0, direction='ASCENDING')
-            return new_vertices, reverse_mapping
+            # confidence = K.max(confidence, axis=-1, keepdims=False)
+            print(neighborhood)
+            maping = K.sum(neighborhood, axis=-1)
+            # neighborhood = K.mean(neighborhood - 0, axis=-1)
+            # confidence = K.tf.add(confidence, neighborhood)
+            # maping = K.tf.argsort(confidence, axis=0, direction='DESCENDING')
+            # new_vertices = K.tf.gather(vertices_batch, maping)
+            # reverse_mapping = K.tf.argsort(maping, axis=0, direction='ASCENDING')
+            return vertices_batch, maping
 
             # mapping_list = []
             # neighbors = set()
@@ -48,7 +50,7 @@ class GraphPropagation(Layer):
             # return new_vertices, mapping_tensor
 
         vertices = inputs[0]
-        confidence_map = K.max(inputs[1], axis=-1, keepdims=False)
+        confidence_map = inputs[1]
         neighborhood_matrix = inputs[2]
         v, mapping = K.map_fn(graph_propagation, (confidence_map, neighborhood_matrix, vertices), dtype=(tf.float32, tf.int32))
         return [v, mapping]

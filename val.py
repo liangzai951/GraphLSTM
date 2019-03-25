@@ -7,6 +7,8 @@ from tqdm import tqdm
 from config import MODEL_PATH, VALSET_FILE, IMAGES_PATH, N_SUPERPIXELS, \
     SLIC_SIGMA, OUTPUT_PATH, IMAGE_SHAPE, VALIDATION_IMAGES
 from layers.ConfidenceLayer import Confidence
+from layers.GraphLSTM import GraphLSTM
+from layers.GraphLSTMCell import GraphLSTMCell
 from layers.GraphPropagation import GraphPropagation
 from layers.InverseGraphPropagation import InverseGraphPropagation
 from utils.utils import obtain_superpixels, average_rgb_for_superpixels, \
@@ -18,7 +20,10 @@ if __name__ == '__main__':
 
     model = load_model(MODEL_PATH, custom_objects={'Confidence': Confidence,
                                                    'GraphPropagation': GraphPropagation,
-                                                   'InverseGraphPropagation': InverseGraphPropagation})
+                                                   'InverseGraphPropagation': InverseGraphPropagation,
+                                                   'GraphLSTM': GraphLSTM,
+                                                   'GraphLSTMCell': GraphLSTMCell})
+
     for image_name in tqdm(image_list):
         image = io.imread(IMAGES_PATH + image_name + ".jpg")
         shape = image.shape
