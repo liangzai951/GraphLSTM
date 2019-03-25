@@ -22,18 +22,18 @@ class GraphPropagation(Layer):
             maping = K.tf.argsort(confidence, axis=0, direction='DESCENDING')
             new_vertices = K.tf.gather(vertices_batch, maping)
             reverse_mapping = K.tf.argsort(maping, axis=0, direction='ASCENDING')
-            return new_vertices, reverse_mapping
+            return new_vertices, reverse_mapping, maping
 
         vertices = inputs[0]
         confidence_map = inputs[1]
         neighborhood_matrix = inputs[2]
-        v, mapping = K.map_fn(graph_propagation, (confidence_map, neighborhood_matrix, vertices), dtype=(tf.float32, tf.int32))
-        return [v, mapping]
+        v, reverse_mapping, mapping = K.map_fn(graph_propagation, (confidence_map, neighborhood_matrix, vertices), dtype=(tf.float32, tf.int32, tf.int32))
+        return [v, reverse_mapping, mapping]
 
     def compute_output_shape(self, input_shape):
         self.__verify_input_shape(input_shape)
         vertices, confidence_map, neighbors = input_shape
-        return [vertices, (vertices[0], vertices[1])]
+        return [vertices, (vertices[0], vertices[1]), (vertices[0], vertices[1])]
 
     @staticmethod
     def __verify_input_shape(input_shape):

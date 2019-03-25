@@ -28,11 +28,11 @@ def create_model():
     confidence = Confidence(N_SUPERPIXELS, name="ConfidenceMap", trainable=False)([conv3, slic])
 
     # GRAPH PROPAGATION
-    graph, reverse = GraphPropagation(N_SUPERPIXELS, name="GraphPath", trainable=False)([superpixels, confidence, neighbors])
+    graph, reverse, mapping = GraphPropagation(N_SUPERPIXELS, name="GraphPath", trainable=False)([superpixels, confidence, neighbors])
 
     # MAIN LSTM PART
     lstm_cell = GraphLSTMCell(IMAGE_SHAPE[-1])
-    lstm = GraphLSTM(lstm_cell, return_sequences=True, name="G-LSTM", stateful=True)(graph)
+    lstm = GraphLSTM(lstm_cell, return_sequences=True, name="G-LSTM", stateful=True)([graph, superpixels, neighbors, mapping, reverse])
     # lstm = GraphLSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM", stateful=True)([graph, superpixels, neighbors, mapping])
     # lstm2 = LSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM2")(lstm)
 

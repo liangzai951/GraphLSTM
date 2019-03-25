@@ -59,7 +59,7 @@ class GraphLSTMCell(Layer):
         self._recurrent_dropout_mask = None
 
     def build(self, input_shape):
-        input_dim = input_shape[-1]
+        input_dim = input_shape[0][-1]
         self.U = self.add_weight(shape=(input_dim, self.units * 4),
                                  name='kernel',
                                  initializer=self.kernel_initializer,
@@ -115,7 +115,8 @@ class GraphLSTMCell(Layer):
             self.bias_o = None
         self.built = True
 
-    def call(self, inputs, states, training=None):
+    def call(self, inputs, states, constants=None, training=None, **kwargs):
+        old_vertices, neighbors, mapping, reverse_mapping = constants
         if 0 < self.dropout < 1 and self._dropout_mask is None:
             self._dropout_mask = _generate_dropout_mask(
                 K.ones_like(inputs),
@@ -137,6 +138,7 @@ class GraphLSTMCell(Layer):
 
         h_tm1 = states[0]  # previous memory state
         c_tm1 = states[1]  # previous carry state
+        print(kwargs)
 
         if self.implementation == 1:
             if 0 < self.dropout < 1.:
