@@ -13,10 +13,10 @@ from layers.InverseGraphPropagation import InverseGraphPropagation
 
 def create_model():
     # INPUTS
-    image = Input(shape=IMAGE_SHAPE, name="Image", batch_shape=(1,) + IMAGE_SHAPE)
-    slic = Input(shape=SLIC_SHAPE, name="SLIC", batch_shape=(1,) + SLIC_SHAPE)
-    superpixels = Input(shape=(N_SUPERPIXELS, IMAGE_SHAPE[2]), name="Vertices", batch_shape=(1, N_SUPERPIXELS, IMAGE_SHAPE[2]))
-    neighbors = Input(shape=(N_SUPERPIXELS, N_SUPERPIXELS), name="Neighborhood", batch_shape=(1, N_SUPERPIXELS, N_SUPERPIXELS), dtype='int32')
+    image = Input(shape=IMAGE_SHAPE, name="Image", batch_shape=(TRAIN_BATCH_SIZE,) + IMAGE_SHAPE)
+    slic = Input(shape=SLIC_SHAPE, name="SLIC", batch_shape=(TRAIN_BATCH_SIZE,) + SLIC_SHAPE)
+    superpixels = Input(shape=(N_SUPERPIXELS, IMAGE_SHAPE[2]), name="Vertices", batch_shape=(TRAIN_BATCH_SIZE, N_SUPERPIXELS, IMAGE_SHAPE[2]))
+    neighbors = Input(shape=(N_SUPERPIXELS, N_SUPERPIXELS), name="Neighborhood", batch_shape=(TRAIN_BATCH_SIZE, N_SUPERPIXELS, N_SUPERPIXELS))
 
     # IMAGE CONVOLUTION
     conv1 = Conv2D(8, 5, padding='same')(image)
@@ -31,7 +31,7 @@ def create_model():
     graph, reverse = GraphPropagation(N_SUPERPIXELS, name="GraphPath", trainable=False)([superpixels, confidence, neighbors])
 
     # MAIN LSTM PART
-    lstm = GraphLSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM", stateful=True)(graph)
+    lstm = LSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM", stateful=False)(graph)
     # lstm = GraphLSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM", stateful=True)([graph, superpixels, neighbors, mapping])
     # lstm2 = LSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM2")(lstm)
 

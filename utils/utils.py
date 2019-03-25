@@ -51,7 +51,7 @@ def get_neighbors(segments, n_segments):
     e = {v: set([x[1] for x in edges if x[0] == v] + [x[0] for x in edges if
                                                       x[1] == v]) for v in
          sorted(vertices)}
-    matrix = np.zeros(shape=(n_segments, n_segments), dtype=int)
+    matrix = np.zeros(shape=(n_segments, n_segments))
     for start_node, neighbors in e.items():
         for neighbor in neighbors:
             matrix[start_node, neighbor] = 1

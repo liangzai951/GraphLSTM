@@ -16,38 +16,13 @@ class GraphPropagation(Layer):
 
         def graph_propagation(input_tuple):
             confidence, neighborhood, vertices_batch = input_tuple
-            # confidence = K.max(confidence, axis=-1, keepdims=False)
-            print(neighborhood)
-            maping = K.sum(neighborhood, axis=-1)
-            # neighborhood = K.mean(neighborhood - 0, axis=-1)
-            # confidence = K.tf.add(confidence, neighborhood)
-            # maping = K.tf.argsort(confidence, axis=0, direction='DESCENDING')
-            # new_vertices = K.tf.gather(vertices_batch, maping)
-            # reverse_mapping = K.tf.argsort(maping, axis=0, direction='ASCENDING')
-            return vertices_batch, maping
-
-            # mapping_list = []
-            # neighbors = set()
-            #
-            # while len(mapping_list) != len(K.tf.unstack(confidence)):
-            #     if not neighbors:
-            #         first_confident = K.argmax(confidence, axis=0)
-            #     else:
-            #         temp_indices = K.variable(np.array(list(neighbors)))
-            #         sub_confidence = K.gather(confidence, temp_indices)
-            #         first_confident = K.argmax(sub_confidence, axis=0)
-            #         neighbors.remove(first_confident)
-            #     if first_confident not in mapping_list:
-            #         mapping_list.append(first_confident)
-            #         neighbors_4_first_confident = K.squeeze(K.tf.where(K.tf.equal(neighborhood[first_confident, :], K.constant(1.0))), axis=-1)
-            #         print(neighbors_4_first_confident)
-            #         neighbors_set = []
-            #
-            #
-            # mapping_tensor = K.stack(mapping_list)
-            # new_vertices = K.gather(vertices_batch, mapping_tensor)
-            #
-            # return new_vertices, mapping_tensor
+            confidence = K.max(confidence, axis=-1, keepdims=False)
+            neighborhood = K.mean(neighborhood, axis=-1)
+            confidence = K.tf.add(confidence, neighborhood)
+            maping = K.tf.argsort(confidence, axis=0, direction='DESCENDING')
+            new_vertices = K.tf.gather(vertices_batch, maping)
+            reverse_mapping = K.tf.argsort(maping, axis=0, direction='ASCENDING')
+            return new_vertices, reverse_mapping
 
         vertices = inputs[0]
         confidence_map = inputs[1]

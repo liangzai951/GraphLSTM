@@ -24,6 +24,7 @@ if __name__ == '__main__':
                                                    'GraphLSTM': GraphLSTM,
                                                    'GraphLSTMCell': GraphLSTMCell})
 
+    # TODO: MAKE VALIDATION IN BATCHES THE SAME AS TRAIN_BATCH_SIZE
     for image_name in tqdm(image_list):
         image = io.imread(IMAGES_PATH + image_name + ".jpg")
         shape = image.shape
