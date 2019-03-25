@@ -2,94 +2,205 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import warnings
-import tensorflow as tf
 from keras import backend as K
-from keras import activations
-from keras import initializers
-from keras import regularizers
-from keras import constraints
-from keras.engine import InputSpec
-from keras.layers import RNN, LSTM, has_arg, to_list
+from keras.engine import Layer, InputSpec
+from keras.layers import RNN, has_arg, to_list, np
 from keras.layers.recurrent import _standardize_args
-
-from keras.legacy import interfaces
-from tensorflow import expand_dims, zeros_like, reverse
-from tensorflow.python.ops import control_flow_ops, tensor_array_ops
-
-from layers.GraphLSTMCell import GraphLSTMCell
 
 
 class GraphLSTM(RNN):
-
-    @interfaces.legacy_recurrent_support
-    def __init__(self, units,
-                 activation='tanh',
-                 recurrent_activation='hard_sigmoid',
-                 use_bias=True,
-                 kernel_initializer='glorot_uniform',
-                 recurrent_initializer='orthogonal',
-                 bias_initializer='zeros',
-                 unit_forget_bias=True,
-                 kernel_regularizer=None,
-                 recurrent_regularizer=None,
-                 bias_regularizer=None,
-                 activity_regularizer=None,
-                 kernel_constraint=None,
-                 recurrent_constraint=None,
-                 bias_constraint=None,
-                 dropout=0.,
-                 recurrent_dropout=0.,
-                 implementation=1,
+    def __init__(self, cell,
                  return_sequences=False,
                  return_state=False,
                  go_backwards=False,
                  stateful=False,
                  unroll=False,
                  **kwargs):
-        if implementation == 0:
-            warnings.warn('`implementation=0` has been deprecated, '
-                          'and now defaults to `implementation=1`.'
-                          'Please update your layer call.')
-        if K.backend() == 'theano' and (dropout or recurrent_dropout):
-            warnings.warn(
-                'RNN dropout is no longer supported with the Theano backend '
-                'due to technical limitations. '
-                'You can either set `dropout` and `recurrent_dropout` to 0, '
-                'or use the TensorFlow backend.')
-            dropout = 0.
-            recurrent_dropout = 0.
+        if not hasattr(cell, 'call'):
+            raise ValueError('`cell` should have a `call` method. '
+                             'The RNN was passed:', cell)
+        if not hasattr(cell, 'state_size'):
+            raise ValueError('The RNN cell should have '
+                             'an attribute `state_size` '
+                             '(tuple of integers, '
+                             'one integer per RNN state).')
+        super(RNN, self).__init__(**kwargs)
+        self.cell = cell
+        self.return_sequences = return_sequences
+        self.return_state = return_state
+        self.go_backwards = go_backwards
+        self.stateful = stateful
+        self.unroll = unroll
 
-        cell = GraphLSTMCell(units,
-                             activation=activation,
-                             recurrent_activation=recurrent_activation,
-                             use_bias=use_bias,
-                             kernel_initializer=kernel_initializer,
-                             recurrent_initializer=recurrent_initializer,
-                             unit_forget_bias=unit_forget_bias,
-                             bias_initializer=bias_initializer,
-                             kernel_regularizer=kernel_regularizer,
-                             recurrent_regularizer=recurrent_regularizer,
-                             bias_regularizer=bias_regularizer,
-                             kernel_constraint=kernel_constraint,
-                             recurrent_constraint=recurrent_constraint,
-                             bias_constraint=bias_constraint,
-                             dropout=dropout,
-                             recurrent_dropout=recurrent_dropout,
-                             implementation=implementation)
-        super(GraphLSTM, self).__init__(cell,
-                                        return_sequences=return_sequences,
-                                        return_state=return_state,
-                                        go_backwards=go_backwards,
-                                        stateful=stateful,
-                                        unroll=unroll,
-                                        **kwargs)
-        self.activity_regularizer = regularizers.get(activity_regularizer)
+        self.supports_masking = True
+        self.input_spec = [InputSpec(ndim=3)]
+        self.state_spec = None
+        self._states = None
+        self.constants_spec = None
+        self._num_constants = None
 
-    def call(self, inputs, mask=None, training=None, initial_state=None,
-             constants=None, **kwargs):
-        self.cell._dropout_mask = None
-        self.cell._recurrent_dropout_mask = None
+    @property
+    def states(self):
+        if self._states is None:
+            if isinstance(self.cell.state_size, int):
+                num_states = 1
+            else:
+                num_states = len(self.cell.state_size)
+            return [None for _ in range(num_states)]
+        return self._states
+
+    @states.setter
+    def states(self, states):
+        self._states = states
+
+    def compute_output_shape(self, input_shape):
+        if isinstance(input_shape, list):
+            input_shape = input_shape[0]
+
+        if hasattr(self.cell.state_size, '__len__'):
+            state_size = self.cell.state_size
+        else:
+            state_size = [self.cell.state_size]
+
+        if getattr(self.cell, 'output_size', None) is not None:
+            output_dim = self.cell.output_size
+        else:
+            output_dim = state_size[0]
+
+        if self.return_sequences:
+            output_shape = (input_shape[0], input_shape[1], output_dim)
+        else:
+            output_shape = (input_shape[0], output_dim)
+
+        if self.return_state:
+            state_shape = [(input_shape[0], dim) for dim in state_size]
+            return [output_shape] + state_shape
+        else:
+            return output_shape
+
+    def compute_mask(self, inputs, mask):
+        if isinstance(mask, list):
+            mask = mask[0]
+        output_mask = mask if self.return_sequences else None
+        if self.return_state:
+            state_mask = [None for _ in self.states]
+            return [output_mask] + state_mask
+        else:
+            return output_mask
+
+    def build(self, input_shape):
+        # Note input_shape will be list of shapes of initial states and
+        # constants if these are passed in __call__.
+        if self._num_constants is not None:
+            constants_shape = input_shape[-self._num_constants:]
+        else:
+            constants_shape = None
+
+        if isinstance(input_shape, list):
+            input_shape = input_shape[0]
+
+        batch_size = input_shape[0] if self.stateful else None
+        input_dim = input_shape[-1]
+        self.input_spec[0] = InputSpec(shape=(batch_size, None, input_dim))
+
+        # allow cell (if layer) to build before we set or validate state_spec
+        if isinstance(self.cell, Layer):
+            step_input_shape = (input_shape[0],) + input_shape[2:]
+            if constants_shape is not None:
+                self.cell.build([step_input_shape] + constants_shape)
+            else:
+                self.cell.build(step_input_shape)
+
+        # set or validate state_spec
+        if hasattr(self.cell.state_size, '__len__'):
+            state_size = list(self.cell.state_size)
+        else:
+            state_size = [self.cell.state_size]
+
+        if self.state_spec is not None:
+            # initial_state was passed in call, check compatibility
+            if [spec.shape[-1] for spec in self.state_spec] != state_size:
+                raise ValueError(
+                    'An `initial_state` was passed that is not compatible with '
+                    '`cell.state_size`. Received `state_spec`={}; '
+                    'however `cell.state_size` is '
+                    '{}'.format(self.state_spec, self.cell.state_size))
+        else:
+            self.state_spec = [InputSpec(shape=(None, dim))
+                               for dim in state_size]
+        if self.stateful:
+            self.reset_states()
+        self.built = True
+
+    def get_initial_state(self, inputs):
+        # build an all-zero tensor of shape (samples, output_dim)
+        initial_state = K.zeros_like(inputs)  # (samples, timesteps, input_dim)
+        initial_state = K.sum(initial_state, axis=(1, 2))  # (samples,)
+        initial_state = K.expand_dims(initial_state)  # (samples, 1)
+        if hasattr(self.cell.state_size, '__len__'):
+            return [K.tile(initial_state, [1, dim])
+                    for dim in self.cell.state_size]
+        else:
+            return [K.tile(initial_state, [1, self.cell.state_size])]
+
+    def __call__(self, inputs, initial_state=None, constants=None, **kwargs):
+        inputs, initial_state, constants = _standardize_args(
+            inputs, initial_state, constants, self._num_constants)
+
+        if initial_state is None and constants is None:
+            return super(RNN, self).__call__(inputs, **kwargs)
+
+        # If any of `initial_state` or `constants` are specified and are Keras
+        # tensors, then add them to the inputs and temporarily modify the
+        # input_spec to include them.
+
+        additional_inputs = []
+        additional_specs = []
+        if initial_state is not None:
+            kwargs['initial_state'] = initial_state
+            additional_inputs += initial_state
+            self.state_spec = [InputSpec(shape=K.int_shape(state))
+                               for state in initial_state]
+            additional_specs += self.state_spec
+        if constants is not None:
+            kwargs['constants'] = constants
+            additional_inputs += constants
+            self.constants_spec = [InputSpec(shape=K.int_shape(constant))
+                                   for constant in constants]
+            self._num_constants = len(constants)
+            additional_specs += self.constants_spec
+        # at this point additional_inputs cannot be empty
+        is_keras_tensor = K.is_keras_tensor(additional_inputs[0])
+        for tensor in additional_inputs:
+            if K.is_keras_tensor(tensor) != is_keras_tensor:
+                raise ValueError('The initial state or constants of an RNN'
+                                 ' layer cannot be specified with a mix of'
+                                 ' Keras tensors and non-Keras tensors'
+                                 ' (a "Keras tensor" is a tensor that was'
+                                 ' returned by a Keras layer, or by `Input`)')
+
+        if is_keras_tensor:
+            # Compute the full input spec, including state and constants
+            full_input = [inputs] + additional_inputs
+            full_input_spec = self.input_spec + additional_specs
+            # Perform the call with temporarily replaced input_spec
+            original_input_spec = self.input_spec
+            self.input_spec = full_input_spec
+            output = super(RNN, self).__call__(full_input, **kwargs)
+            self.input_spec = original_input_spec
+            return output
+        else:
+            return super(RNN, self).__call__(inputs, **kwargs)
+
+    def call(self,
+             inputs,
+             mask=None,
+             training=None,
+             initial_state=None,
+             constants=None):
+        # input shape: `(samples, time (padded with zeros), input_dim)`
+        # note that the .build() method of subclasses MUST define
+        # self.input_spec and self.state_spec with complete input shapes.
         if isinstance(inputs, list):
             # get initial_state from full input spec
             # as they could be copied to multiple GPU.
@@ -107,7 +218,6 @@ class GraphLSTM(RNN):
         else:
             initial_state = self.get_initial_state(inputs)
 
-        kwargs['previous_states'] = initial_state
         if isinstance(mask, list):
             mask = mask[0]
 
@@ -131,6 +241,7 @@ class GraphLSTM(RNN):
                              'the time dimension by passing a `shape` '
                              'or `batch_shape` argument to your Input layer.')
 
+        kwargs = {}
         if has_arg(self.cell.call, 'training'):
             kwargs['training'] = training
 
@@ -178,110 +289,108 @@ class GraphLSTM(RNN):
         else:
             return output
 
-    @property
-    def units(self):
-        return self.cell.units
-
-    @property
-    def activation(self):
-        return self.cell.activation
-
-    @property
-    def recurrent_activation(self):
-        return self.cell.recurrent_activation
-
-    @property
-    def use_bias(self):
-        return self.cell.use_bias
-
-    @property
-    def kernel_initializer(self):
-        return self.cell.kernel_initializer
-
-    @property
-    def recurrent_initializer(self):
-        return self.cell.recurrent_initializer
-
-    @property
-    def bias_initializer(self):
-        return self.cell.bias_initializer
-
-    @property
-    def unit_forget_bias(self):
-        return self.cell.unit_forget_bias
-
-    @property
-    def kernel_regularizer(self):
-        return self.cell.kernel_regularizer
-
-    @property
-    def recurrent_regularizer(self):
-        return self.cell.recurrent_regularizer
-
-    @property
-    def bias_regularizer(self):
-        return self.cell.bias_regularizer
-
-    @property
-    def kernel_constraint(self):
-        return self.cell.kernel_constraint
-
-    @property
-    def recurrent_constraint(self):
-        return self.cell.recurrent_constraint
-
-    @property
-    def bias_constraint(self):
-        return self.cell.bias_constraint
-
-    @property
-    def dropout(self):
-        return self.cell.dropout
-
-    @property
-    def recurrent_dropout(self):
-        return self.cell.recurrent_dropout
-
-    @property
-    def implementation(self):
-        return self.cell.implementation
+    def reset_states(self, states=None):
+        if not self.stateful:
+            raise AttributeError('Layer must be stateful.')
+        batch_size = self.input_spec[0].shape[0]
+        if not batch_size:
+            raise ValueError('If a RNN is stateful, it needs to know '
+                             'its batch size. Specify the batch size '
+                             'of your input tensors: \n'
+                             '- If using a Sequential model, '
+                             'specify the batch size by passing '
+                             'a `batch_input_shape` '
+                             'argument to your first layer.\n'
+                             '- If using the functional API, specify '
+                             'the batch size by passing a '
+                             '`batch_shape` argument to your Input layer.')
+        # initialize state if None
+        if self.states[0] is None:
+            if hasattr(self.cell.state_size, '__len__'):
+                self.states = [K.zeros((batch_size, dim))
+                               for dim in self.cell.state_size]
+            else:
+                self.states = [K.zeros((batch_size, self.cell.state_size))]
+        elif states is None:
+            if hasattr(self.cell.state_size, '__len__'):
+                for state, dim in zip(self.states, self.cell.state_size):
+                    K.set_value(state, np.zeros((batch_size, dim)))
+            else:
+                K.set_value(self.states[0],
+                            np.zeros((batch_size, self.cell.state_size)))
+        else:
+            states = to_list(states, allow_tuple=True)
+            if len(states) != len(self.states):
+                raise ValueError('Layer ' + self.name + ' expects ' +
+                                 str(len(self.states)) + ' states, '
+                                                         'but it received ' + str(
+                    len(states)) +
+                                 ' state values. Input received: ' +
+                                 str(states))
+            for index, (value, state) in enumerate(zip(states, self.states)):
+                if hasattr(self.cell.state_size, '__len__'):
+                    dim = self.cell.state_size[index]
+                else:
+                    dim = self.cell.state_size
+                if value.shape != (batch_size, dim):
+                    raise ValueError('State ' + str(index) +
+                                     ' is incompatible with layer ' +
+                                     self.name + ': expected shape=' +
+                                     str((batch_size, dim)) +
+                                     ', found shape=' + str(value.shape))
+                # TODO: consider batch calls to `set_value`.
+                K.set_value(state, value)
 
     def get_config(self):
-        config = {'units': self.units,
-                  'activation': activations.serialize(self.activation),
-                  'recurrent_activation':
-                      activations.serialize(self.recurrent_activation),
-                  'use_bias': self.use_bias,
-                  'kernel_initializer':
-                      initializers.serialize(self.kernel_initializer),
-                  'recurrent_initializer':
-                      initializers.serialize(self.recurrent_initializer),
-                  'bias_initializer': initializers.serialize(
-                      self.bias_initializer),
-                  'unit_forget_bias': self.unit_forget_bias,
-                  'kernel_regularizer':
-                      regularizers.serialize(self.kernel_regularizer),
-                  'recurrent_regularizer':
-                      regularizers.serialize(self.recurrent_regularizer),
-                  'bias_regularizer': regularizers.serialize(
-                      self.bias_regularizer),
-                  'activity_regularizer':
-                      regularizers.serialize(self.activity_regularizer),
-                  'kernel_constraint': constraints.serialize(
-                      self.kernel_constraint),
-                  'recurrent_constraint':
-                      constraints.serialize(self.recurrent_constraint),
-                  'bias_constraint': constraints.serialize(
-                      self.bias_constraint),
-                  'dropout': self.dropout,
-                  'recurrent_dropout': self.recurrent_dropout,
-                  'implementation': self.implementation}
-        base_config = super(GraphLSTM, self).get_config()
-        del base_config['cell']
+        config = {'return_sequences': self.return_sequences,
+                  'return_state': self.return_state,
+                  'go_backwards': self.go_backwards,
+                  'stateful': self.stateful,
+                  'unroll': self.unroll}
+        if self._num_constants is not None:
+            config['num_constants'] = self._num_constants
+
+        cell_config = self.cell.get_config()
+        config['cell'] = {'class_name': self.cell.__class__.__name__,
+                          'config': cell_config}
+        base_config = super(RNN, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
     @classmethod
-    def from_config(cls, config):
-        if 'implementation' in config and config['implementation'] == 0:
-            config['implementation'] = 1
-        return cls(**config)
+    def from_config(cls, config, custom_objects=None):
+        from keras.layers import deserialize as deserialize_layer
+        cell = deserialize_layer(config.pop('cell'),
+                                 custom_objects=custom_objects)
+        num_constants = config.pop('num_constants', None)
+        layer = cls(cell, **config)
+        layer._num_constants = num_constants
+        return layer
+
+    @property
+    def trainable_weights(self):
+        if not self.trainable:
+            return []
+        if isinstance(self.cell, Layer):
+            return self.cell.trainable_weights
+        return []
+
+    @property
+    def non_trainable_weights(self):
+        if isinstance(self.cell, Layer):
+            if not self.trainable:
+                return self.cell.weights
+            return self.cell.non_trainable_weights
+        return []
+
+    @property
+    def losses(self):
+        layer_losses = super(RNN, self).losses
+        if isinstance(self.cell, Layer):
+            return self.cell.losses + layer_losses
+        return layer_losses
+
+    def get_losses_for(self, inputs=None):
+        if isinstance(self.cell, Layer):
+            cell_losses = self.cell.get_losses_for(inputs)
+            return cell_losses + super(RNN, self).get_losses_for(inputs)
+        return super(RNN, self).get_losses_for(inputs)

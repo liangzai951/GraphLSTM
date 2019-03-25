@@ -1,12 +1,12 @@
 from keras import Input, Model
-from keras.layers import Conv2D, Conv1D, LSTM
+from keras.layers import Conv2D, Conv1D, LSTMCell
 from keras.optimizers import SGD
 from keras.utils.vis_utils import plot_model
+
 from config import *
 from layers.ConfidenceLayer import Confidence
-import tensorflow as tf
-from layers.Convert2Image import Convert2Image
 from layers.GraphLSTM import GraphLSTM
+from layers.GraphLSTMCell import GraphLSTMCell
 from layers.GraphPropagation import GraphPropagation
 from layers.InverseGraphPropagation import InverseGraphPropagation
 
@@ -31,7 +31,8 @@ def create_model():
     graph, reverse = GraphPropagation(N_SUPERPIXELS, name="GraphPath", trainable=False)([superpixels, confidence, neighbors])
 
     # MAIN LSTM PART
-    lstm = LSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM", stateful=False)(graph)
+    lstm_cell = GraphLSTMCell(IMAGE_SHAPE[-1])
+    lstm = GraphLSTM(lstm_cell, return_sequences=True, name="G-LSTM", stateful=True)(graph)
     # lstm = GraphLSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM", stateful=True)([graph, superpixels, neighbors, mapping])
     # lstm2 = LSTM(IMAGE_SHAPE[-1], return_sequences=True, name="G-LSTM2")(lstm)
 
