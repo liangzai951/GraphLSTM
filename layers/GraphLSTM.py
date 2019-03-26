@@ -253,14 +253,14 @@ class GraphLSTM(RNN):
             if not has_arg(self.cell.call, 'constants'):
                 raise ValueError('RNN cell does not support constants')
 
-            def step(inputs, states):
+            def step(inputs, states, time):
                 constants = states[-self._num_constants:]
                 states = states[:-self._num_constants]
-                return self.cell.call(inputs, states, constants=constants,
+                return self.cell.call(inputs, states, time, constants=constants,
                                       **kwargs)
         else:
-            def step(inputs, states):
-                return self.cell.call(inputs, states, **kwargs)
+            def step(inputs, states, time):
+                return self.cell.call(inputs, states, time, **kwargs)
 
         last_output, outputs, states = self.rnn(step,
                                                 inputs,
@@ -498,9 +498,10 @@ class GraphLSTM(RNN):
                 inputs = reverse(inputs, 0)
 
             states = tuple(initial_states)
+            time = tf.constant(0, dtype='int32', name='time')
 
             time_steps = tf.shape(inputs)[0]
-            outputs, _ = step_function(inputs[0], initial_states + constants)
+            outputs, _ = step_function(inputs[0], initial_states + constants, time)
             output_ta = tensor_array_ops.TensorArray(
                 dtype=outputs.dtype,
                 size=time_steps,
@@ -510,7 +511,6 @@ class GraphLSTM(RNN):
                 size=time_steps,
                 tensor_array_name='input_ta')
             input_ta = input_ta.unstack(inputs)
-            time = tf.constant(0, dtype='int32', name='time')
 
             if mask is not None:
                 if not states:
@@ -544,7 +544,7 @@ class GraphLSTM(RNN):
                     mask_t = mask_ta.read(time)
                     output, new_states = step_function(current_input,
                                                        tuple(states) +
-                                                       tuple(constants))
+                                                       tuple(constants), time)
                     if getattr(output, '_uses_learning_phase', False):
                         global uses_learning_phase
                         uses_learning_phase = True
@@ -576,7 +576,7 @@ class GraphLSTM(RNN):
                     current_input = input_ta.read(time)
                     output, new_states = step_function(current_input,
                                                        tuple(states) +
-                                                       tuple(constants))
+                                                       tuple(constants), time)
                     if getattr(output, '_uses_learning_phase', False):
                         global uses_learning_phase
                         uses_learning_phase = True
