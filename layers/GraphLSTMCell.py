@@ -150,7 +150,6 @@ class GraphLSTMCell(Layer):
 
         h_tm1 = states[0]  # previous memory state
         c_tm1 = states[1]  # previous carry state
-        print(kwargs)
         h_tm2 = kwargs['previous_state'][0]
         c_tm2 = kwargs['previous_state'][1]
 
@@ -165,17 +164,15 @@ class GraphLSTMCell(Layer):
             ng_num = K.sum(ng_row, axis=-1)
             batch_ng = K.tf.where(K.equal(ng_row, 1))[:, 0]
             current_positions = K.gather(batch_map, batch_ng)
-            print(current_positions)
 
             def sum_unknown(input_time):
                 return tf.cond(input_time < time, lambda: h_tm1, lambda: h_tm2)
 
             tmp_states = K.map_fn(sum_unknown, current_positions, dtype=tf.float32)
-            tmp_states = K.tf.divide(K.sum(tmp_states), ng_num)
+            tmp_states = K.tf.divide(K.sum(tmp_states, axis=[0, 1]), ng_num)
             return tmp_states
 
         ngs = K.map_fn(sum_rows, (ng_rows, mapping), dtype=tf.float32)
-        print(ngs)
 
         if self.implementation == 1:
             if 0 < self.dropout < 1.:
@@ -212,7 +209,6 @@ class GraphLSTMCell(Layer):
                 h_tm1_f = h_tm1
                 h_tm1_c = h_tm1
                 h_tm1_o = h_tm1
-
             i = x_i + K.dot(h_tm1_i, self.U_i) + K.dot(ngs, self.Un_i)
             f_avg = x_f_avg + K.dot(h_tm1, self.Un_f)
             f = x_f + K.dot(h_tm1_f, self.U_f)
@@ -261,7 +257,7 @@ class GraphLSTMCell(Layer):
                 return tf.cond(input_time < time, lambda: f_avg * c_tm1, lambda: f_avg * c_tm2)
 
             tmp_states = K.map_fn(sum_unknown_memories, current_positions, dtype=tf.float32)
-            tmp_states = K.tf.divide(K.sum(tmp_states), ng_num)
+            tmp_states = K.tf.divide(K.sum(tmp_states, axis=[0, 1]), ng_num)
             return tmp_states
 
         memory = K.map_fn(sum_memories, (ng_rows, mapping), dtype=tf.float32)
@@ -303,62 +299,3 @@ class GraphLSTMCell(Layer):
                   'implementation': self.implementation}
         base_config = super(GraphLSTMCell, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
-
-
-#         avg_m_tm1 = states[1]  # avg
-#
-#         if 0 < self.dropout < 1.:
-#             inputs_u = inputs * dp_mask[0]
-#             inputs_f = inputs * dp_mask[1]
-#             inputs_c = inputs * dp_mask[2]
-#             inputs_o = inputs * dp_mask[3]
-#         else:
-#             inputs_u = inputs
-#             inputs_f = inputs
-#             inputs_c = inputs
-#             inputs_o = inputs
-#         avg_m_tm1_u = avg_m_tm1
-#         avg_m_tm1_f = avg_m_tm1
-#         avg_m_tm1_c = avg_m_tm1
-#         avg_m_tm1_o = avg_m_tm1
-#         if 0 < self.recurrent_dropout < 1.:
-#             h_tm1_u = h_tm1 * rec_dp_mask[0]
-#             h_tm1_f = h_tm1 * rec_dp_mask[1]
-#             h_tm1_c = h_tm1 * rec_dp_mask[2]
-#             h_tm1_o = h_tm1 * rec_dp_mask[3]
-#         else:
-#             h_tm1_u = h_tm1
-#             h_tm1_f = h_tm1
-#             h_tm1_c = h_tm1
-#             h_tm1_o = h_tm1
-#
-#         x_u = K.dot(inputs_u, self.Wu)
-#         x_f = K.dot(inputs_f, self.Wf)
-#         x_c = K.dot(inputs_c, self.Wc)
-#         x_o = K.dot(inputs_o, self.Wo)
-#
-#         y_u = K.dot(h_tm1_u, self.Uu)
-#         y_f = K.dot(h_tm1_f, self.Uf)
-#         y_c = K.dot(h_tm1_c, self.Uc)
-#         y_o = K.dot(h_tm1_o, self.Uo)
-#
-#         z_u = K.dot(avg_m_tm1_u, self.Unu)
-#         z_f = K.dot(avg_m_tm1_f, self.Unf)
-#         z_c = K.dot(avg_m_tm1_c, self.Unc)
-#         z_o = K.dot(avg_m_tm1_o, self.Uno)
-#
-#         u = self.recurrent_activation(x_u + y_u + z_u)
-#         f = self.recurrent_activation(x_f + y_f)
-#         f_avg = self.recurrent_activation(x_f + z_f)
-#         c = self.activation(x_c + y_c + z_c)
-#         o = self.recurrent_activation(x_o + y_o + z_o)
-#
-#         m = K.mean(
-#             f_avg * m_tm1) + f * m_tm1 + u * c  # TODO: ADD visited & unvisited
-#         h = self.activation(o * m)
-#         avg_m = K.mean(h)  # TODO: modify
-#         if 0 < self.dropout + self.recurrent_dropout:
-#             if training is None:
-#                 h._uses_learning_phase = True
-#         return h, [h, m]
-
