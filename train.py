@@ -48,6 +48,12 @@ def generator(image_list, images_path, expected_images, size=1):
             vertices = average_rgb_for_superpixels(img, slic)
             neighbors = get_neighbors(slic, N_SUPERPIXELS)
             expected = average_rgb_for_superpixels(expected, slic)
+            assert not numpy.any(numpy.isnan(img))
+            assert not numpy.any(numpy.isnan(expected))
+            assert not numpy.any(numpy.isnan(confidence_map))
+            assert not numpy.any(numpy.isnan(slic))
+            assert not numpy.any(numpy.isnan(vertices))
+            assert not numpy.any(numpy.isnan(neighbors))
 
             # ADD TO BATCH
             batch_img += [img]

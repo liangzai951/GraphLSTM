@@ -17,7 +17,7 @@ import tensorflow as tf
 class GraphLSTMCell(Layer):
     def __init__(self, units,
                  activation='tanh',
-                 recurrent_activation='sigmoid',
+                 recurrent_activation='hard_sigmoid',
                  use_bias=True,
                  kernel_initializer='glorot_uniform',
                  recurrent_initializer='orthogonal',
@@ -169,7 +169,7 @@ class GraphLSTMCell(Layer):
                 return tf.cond(input_time < time, lambda: h_tm1, lambda: h_tm2)
 
             tmp_states = K.map_fn(sum_unknown, current_positions, dtype=tf.float32)
-            tmp_states = K.tf.divide(K.sum(tmp_states, axis=[0, 1]), ng_num)
+            tmp_states = K.tf.div_no_nan(K.sum(tmp_states, axis=[0, 1]), ng_num)
             return tmp_states
 
         ngs = K.map_fn(sum_rows, (ng_rows, mapping), dtype=tf.float32)
@@ -257,7 +257,7 @@ class GraphLSTMCell(Layer):
                 return tf.cond(input_time < time, lambda: f_avg * c_tm1, lambda: f_avg * c_tm2)
 
             tmp_states = K.map_fn(sum_unknown_memories, current_positions, dtype=tf.float32)
-            tmp_states = K.tf.divide(K.sum(tmp_states, axis=[0, 1]), ng_num)
+            tmp_states = K.tf.div_no_nan(K.sum(tmp_states, axis=[0, 1]), ng_num)
             return tmp_states
 
         memory = K.map_fn(sum_memories, (ng_rows, mapping), dtype=tf.float32)
