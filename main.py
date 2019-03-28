@@ -4,7 +4,7 @@ from skimage import io
 import matplotlib.pyplot as plt
 
 from config import N_SUPERPIXELS
-from utils.utils import obtain_superpixels, get_confidence_map, get_neighbors, average_rgb_for_superpixels, sort_values
+from utils.utils import obtain_superpixels, get_neighbors, average_rgb_for_superpixels
 
 if __name__ == '__main__':
     image = io.imread("lena.png")

@@ -1,6 +1,3 @@
-import operator
-import random
-
 from cv2 import cv2
 import numpy as np
 from skimage import img_as_float
@@ -29,10 +26,6 @@ def obtain_superpixels(image, n_segments, sigma):
     return slic(img_as_float(image), n_segments=n_segments, sigma=sigma)
 
 
-def get_confidence_map(image, segments):
-    return {i: random.uniform(a=0, b=1) for i in np.unique(segments)}
-
-
 def get_neighbors(segments, n_segments):
     # get unique labels
     vertices = np.unique(segments)
@@ -57,34 +50,3 @@ def get_neighbors(segments, n_segments):
             matrix[start_node, neighbor] = 1
             matrix[neighbor, start_node] = 1
     return matrix
-
-
-def sort_values(values: dict, neighbors: dict, confidence_map: dict,
-                mode="dfs"):
-    assert len(confidence_map) == len(values) == len(neighbors)
-    if mode == "confidence":
-        sorted_vertices = sorted(confidence_map.items(),
-                                 key=operator.itemgetter(1), reverse=True)
-        sorted_vertices = [x[0] for x in sorted_vertices]
-        return [values[v] for v in sorted_vertices]
-    else:
-        start_vertex = \
-        sorted(confidence_map.items(), key=operator.itemgetter(1),
-               reverse=True)[0][0]
-        visited, queue = set(), [start_vertex]
-        result = []
-        if mode == "bfs":
-            while queue:
-                vertex = queue.pop(0)
-                if vertex not in visited:
-                    visited.add(vertex)
-                    result.append(values[vertex])
-                    queue.extend(neighbors[vertex] - visited)
-        elif mode == "dfs":
-            while queue:
-                vertex = queue.pop()
-                if vertex not in visited:
-                    visited.add(vertex)
-                    result.append(values[vertex])
-                    queue.extend(neighbors[vertex] - visited)
-        return result
