@@ -1,16 +1,14 @@
 import numpy
-from skimage import io
-
 from keras.callbacks import TerminateOnNaN, ModelCheckpoint, TensorBoard
 from keras.engine.saving import load_model
+from skimage import io
 from skimage.transform import resize
 
 from config import *
-from create_model import create_model
+from layers.ConfidenceLayer import Confidence
 from layers.GraphLSTM import GraphLSTM
 from layers.GraphLSTMCell import GraphLSTMCell
 from layers.GraphPropagation import GraphPropagation
-from layers.ConfidenceLayer import Confidence
 from layers.InverseGraphPropagation import InverseGraphPropagation
 from utils.utils import obtain_superpixels, get_neighbors, \
     average_rgb_for_superpixels
@@ -48,12 +46,6 @@ def generator(image_list, images_path, expected_images, size=1):
             vertices = average_rgb_for_superpixels(img, slic)
             neighbors = get_neighbors(slic, N_SUPERPIXELS)
             expected = average_rgb_for_superpixels(expected, slic)
-            assert not numpy.any(numpy.isnan(img))
-            assert not numpy.any(numpy.isnan(expected))
-            assert not numpy.any(numpy.isnan(confidence_map))
-            assert not numpy.any(numpy.isnan(slic))
-            assert not numpy.any(numpy.isnan(vertices))
-            assert not numpy.any(numpy.isnan(neighbors))
 
             # ADD TO BATCH
             batch_img += [img]
