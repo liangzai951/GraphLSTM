@@ -72,7 +72,7 @@ if __name__ == '__main__':
         for index, shape in enumerate(scale_list):
             slic_out = batch_slic[index]
             output_image = numpy.zeros(batch_img[index].shape, dtype="uint8")
-            for segment_num in range(output_vertices[index].shape[1]):
+            for segment_num in range(output_vertices.shape[1]):
                 if segment_num not in numpy.unique(batch_slic[index]):
                     break
                 mask = numpy.zeros(batch_slic[index, :, :].shape + (3,), dtype="uint8")
