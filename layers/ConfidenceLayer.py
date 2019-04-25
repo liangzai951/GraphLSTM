@@ -28,9 +28,10 @@ class Confidence(Layer):
             return K.stack(cycles_list)
         r = K.map_fn(lambda x: mapper(x, self.n_segments), (inputs[0], inputs[1]), dtype=tf.float32)
         # tf.logging.log(tf.logging.ERROR, r)
-        return r
+        return K.max(r, axis=-1, keepdims=True)
+        # return r
 
-    def compute_output_shape(self, input_shape): return input_shape[0][0], self.n_segments, input_shape[0][-1]
+    def compute_output_shape(self, input_shape): return input_shape[0][0], self.n_segments, 1
 
     def get_config(self):
         config = {'n_segments': self.n_segments}

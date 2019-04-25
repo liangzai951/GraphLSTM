@@ -263,7 +263,7 @@ class GraphLSTMCell(Layer):
         memory = K.map_fn(sum_memories, (ng_rows, mapping), dtype=tf.float32)
         memory += f * c_tm1 + i * c
 
-        h = self.activation(o * memory)
+        h = o * self.activation(memory)
         if 0 < self.dropout + self.recurrent_dropout:
             if training is None:
                 h._uses_learning_phase = True

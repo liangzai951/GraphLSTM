@@ -17,13 +17,9 @@ from utils.utils import obtain_superpixels, get_neighbors, \
 def init_callbacks():
     terminator = TerminateOnNaN()
     checkpointer = ModelCheckpoint(
-        "./data/checkpoints/model_{epoch:02d}_{val_OutputConv_acc:.2f}.hdf5",
-        monitor="val_OutputConv_acc",
-        save_weights_only=False, mode="max", period=1)
-    tensorboard = TensorBoard(log_dir="./logs", histogram_freq=0,
-                              batch_size=32, write_graph=True,
-                              write_grads=True)
-    return [terminator, checkpointer, tensorboard]
+        "./checkpoints/model_{epoch:02d}_{val_softmax_1_acc:.2f}.hdf5",
+        monitor="val_softmax_1_acc", save_weights_only=False, mode="max", period=2)
+    return [terminator, checkpointer]
 
 
 def generator(image_list, images_path, expected_images, size=1):
@@ -37,8 +33,8 @@ def generator(image_list, images_path, expected_images, size=1):
         batch_maps = []
         for image_name in batch_names:
             # LOAD IMAGES
-            img = resize(io.imread(images_path + image_name + ".jpg"), IMAGE_SHAPE, anti_aliasing=True)
-            expected = resize(io.imread(expected_images + image_name + ".png"), IMAGE_SHAPE, anti_aliasing=True)
+            img = resize(io.imread(images_path + image_name + ".png"), IMAGE_SHAPE, anti_aliasing=True)
+            expected = resize(io.imread(images_path + image_name + ".png"), IMAGE_SHAPE, anti_aliasing=True)
 
             # OBTAIN OTHER USEFUL DATA
             confidence_map = numpy.expand_dims(numpy.mean(expected, axis=-1), axis=-1)
@@ -66,28 +62,27 @@ def generator(image_list, images_path, expected_images, size=1):
 if __name__ == '__main__':
     callbacks = init_callbacks()
 
-    with open(TRAINSET_FILE) as f:
-        train_image_list = [line.replace("\n", "") for line in f]
-    with open(TRAINVALSET_FILE) as f:
-        val_image_list = [line.replace("\n", "") for line in f]
+    train_image_list = ["test_{0!s}".format(i) for i in range(20)]
+    val_image_list = train_image_list[:4]
+    train_image_list = train_image_list[4:]
 
-    model = load_model(MODEL_PATH,
+    model = load_model("glstm_test.hdf5",
                        custom_objects={'Confidence': Confidence,
                                        'GraphPropagation': GraphPropagation,
                                        'InverseGraphPropagation': InverseGraphPropagation,
                                        'GraphLSTM': GraphLSTM,
                                        'GraphLSTMCell': GraphLSTMCell,
-                                       "custom_mse": custom_mse})
+                                       'custom_mse': custom_mse})
     # model = create_model()
-    model.fit_generator(generator(train_image_list, IMAGES_PATH, VALIDATION_IMAGES, TRAIN_BATCH_SIZE),
+    model.fit_generator(generator(train_image_list, "../../data/test/", "../../data/test/", TRAIN_BATCH_SIZE),
                         steps_per_epoch=numpy.ceil(
-                            TRAIN_ELEMS / (TRAIN_BATCH_SIZE)),
-                        epochs=20,
+                            16 / (TRAIN_BATCH_SIZE)),
+                        epochs=50,
                         verbose=1,
                         callbacks=callbacks,
-                        validation_data=generator(val_image_list, IMAGES_PATH, VALIDATION_IMAGES, VALIDATION_BATCH_SIZE),
+                        validation_data=generator(val_image_list, "../../data/test/", "../../data/test/", VALIDATION_BATCH_SIZE),
                         validation_steps=numpy.ceil(
-                            VALIDATION_ELEMS / (VALIDATION_BATCH_SIZE)),
+                            4 / (VALIDATION_BATCH_SIZE)),
                         max_queue_size=10,
                         shuffle=True)
     model.save(MODEL_PATH)

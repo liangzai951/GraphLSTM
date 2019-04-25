@@ -4,9 +4,7 @@ from skimage import io
 from skimage.transform import resize
 from tqdm import tqdm
 
-from config import MODEL_PATH, VALSET_FILE, IMAGES_PATH, N_SUPERPIXELS, \
-    SLIC_SIGMA, OUTPUT_PATH, IMAGE_SHAPE, VALIDATION_IMAGES, \
-    PREDICT_BATCH_SIZE, SLIC_SHAPE, custom_mse
+from config import *
 from layers.ConfidenceLayer import Confidence
 from layers.GraphLSTM import GraphLSTM
 from layers.GraphLSTMCell import GraphLSTMCell
@@ -16,18 +14,19 @@ from utils.utils import obtain_superpixels, average_rgb_for_superpixels, \
     get_neighbors
 
 if __name__ == '__main__':
-    with open(VALSET_FILE) as f:
-        image_list = [line.replace("\n", "") for line in f]
+    OUTPUT_PATH = "./"
+    image_list = ["test_{0!s}".format(i) for i in range(20)]
 
     while len(image_list) % PREDICT_BATCH_SIZE != 0:
         image_list.append(None)
-
-    model = load_model("./data/checkpoints/model_20_0.49.hdf5", custom_objects={'Confidence': Confidence,
+    VALIDATION_IMAGES = IMAGES_PATH = "../../data/test/"
+    MODEL_PATH = "./checkpoints/model_50_0.96.hdf5"
+    model = load_model(MODEL_PATH, custom_objects={'Confidence': Confidence,
                                                    'GraphPropagation': GraphPropagation,
                                                    'InverseGraphPropagation': InverseGraphPropagation,
                                                    'GraphLSTM': GraphLSTM,
                                                    'GraphLSTMCell': GraphLSTMCell,
-                                                   "custom_mse": custom_mse})
+                                                   'custom_mse': custom_mse})
 
     for img_batch_start in tqdm(range(int(numpy.ceil(len(image_list) / PREDICT_BATCH_SIZE)))):
         batch_img = []
@@ -42,7 +41,7 @@ if __name__ == '__main__':
             image_name = image_list[real_index]
             if image_name is not None:
                 # LOAD IMAGES
-                image = io.imread(IMAGES_PATH + image_name + ".jpg")
+                image = io.imread(IMAGES_PATH + image_name + ".png")
                 images_list.append(image)
                 scale_list.append(image.shape)
                 image_names.append(image_name)
@@ -68,7 +67,7 @@ if __name__ == '__main__':
         batch_vertices = numpy.array(batch_vertices)
         batch_neighbors = numpy.array(batch_neighbors)
 
-        output_vertices, _ = model.predict_on_batch([batch_img, batch_slic, batch_vertices, batch_neighbors])
+        output_vertices, conf = model.predict_on_batch([batch_img, batch_slic, batch_vertices, batch_neighbors])
 
         for index, shape in enumerate(scale_list):
             slic_out = batch_slic[index]
