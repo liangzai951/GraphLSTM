@@ -17,46 +17,36 @@ from utils.utils import obtain_superpixels, get_neighbors, \
 def init_callbacks():
     terminator = TerminateOnNaN()
     checkpointer = ModelCheckpoint(
-        "./checkpoints/model_{epoch:02d}_{val_softmax_1_acc:.2f}.hdf5",
-        monitor="val_softmax_1_acc", save_weights_only=False, mode="max", period=2)
+        "./checkpoints/model_{epoch:02d}_{val_acc:.2f}.hdf5",
+        monitor="val_acc", save_weights_only=False, mode="max", period=2)
     return [terminator, checkpointer]
 
 
 def generator(image_list, images_path, expected_images, size=1):
     while True:
         batch_names = numpy.random.choice(image_list, size=size)
-        batch_img = []
         batch_expected = []
-        batch_slic = []
         batch_vertices = []
         batch_neighbors = []
-        batch_maps = []
         for image_name in batch_names:
             # LOAD IMAGES
             img = resize(io.imread(images_path + image_name + ".png"), IMAGE_SHAPE, anti_aliasing=True)
             expected = resize(io.imread(images_path + image_name + ".png"), IMAGE_SHAPE, anti_aliasing=True)
 
             # OBTAIN OTHER USEFUL DATA
-            confidence_map = numpy.expand_dims(numpy.mean(expected, axis=-1), axis=-1)
             slic = obtain_superpixels(img, N_SUPERPIXELS, SLIC_SIGMA)
             vertices = average_rgb_for_superpixels(img, slic)
             neighbors = get_neighbors(slic, N_SUPERPIXELS)
             expected = average_rgb_for_superpixels(expected, slic)
 
             # ADD TO BATCH
-            batch_img += [img]
             batch_expected += [expected]
-            batch_slic += [slic]
             batch_vertices += [vertices]
             batch_neighbors += [neighbors]
-            batch_maps += [confidence_map]
-        batch_img = numpy.array(batch_img)
         batch_expected = numpy.array(batch_expected)
-        batch_slic = numpy.array(batch_slic)
         batch_vertices = numpy.array(batch_vertices)
         batch_neighbors = numpy.array(batch_neighbors)
-        batch_maps = numpy.array(batch_maps)
-        yield ([batch_img, batch_slic, batch_vertices, batch_neighbors], [batch_expected, batch_maps])
+        yield ([batch_vertices, batch_neighbors], [batch_expected])
 
 
 if __name__ == '__main__':

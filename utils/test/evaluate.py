@@ -20,7 +20,7 @@ if __name__ == '__main__':
     while len(image_list) % PREDICT_BATCH_SIZE != 0:
         image_list.append(None)
     VALIDATION_IMAGES = IMAGES_PATH = "../../data/test/"
-    MODEL_PATH = "./checkpoints/model_50_0.96.hdf5"
+    MODEL_PATH = "./checkpoints/model_50_0.73.hdf5"
     model = load_model(MODEL_PATH, custom_objects={'Confidence': Confidence,
                                                    'GraphPropagation': GraphPropagation,
                                                    'InverseGraphPropagation': InverseGraphPropagation,
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         batch_vertices = numpy.array(batch_vertices)
         batch_neighbors = numpy.array(batch_neighbors)
 
-        output_vertices, conf = model.predict_on_batch([batch_img, batch_slic, batch_vertices, batch_neighbors])
+        output_vertices = model.predict_on_batch([batch_vertices, batch_neighbors])
 
         for index, shape in enumerate(scale_list):
             slic_out = batch_slic[index]
