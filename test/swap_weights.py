@@ -24,23 +24,24 @@ def printer(x):
 
 
 if __name__ == '__main__':
-    raw_model = load_model(VALIDATION_MODEL,
-                           custom_objects={'GraphLSTM': GraphLSTM,
-                                           'GraphLSTMCell': GraphLSTMCell})
-    x = raw_model.get_weights()
-    printer(x)
+    for t in range(50):
+        raw_model = load_model("glstm{0!s}.hdf5".format(t),
+                               custom_objects={'GraphLSTM': GraphLSTM,
+                                               'GraphLSTMCell': GraphLSTMCell})
+        x = raw_model.get_weights()
+        # printer(x)
 
-    # TRUE
-    # x[0][:, 3:6] = -10.0
-    # x[1] = np.zeros(x[1].shape, dtype=np.float32)
-    # x[2] = np.zeros(x[2].shape, dtype=np.float32)
-    # x[3] = np.zeros(x[3].shape, dtype=np.float32)
+        # TRUE
+        x[0][:, 3:6] = -10.0
+        # x[1] = np.zeros(x[1].shape, dtype=np.float32)
+        # x[2] = np.zeros(x[2].shape, dtype=np.float32)
+        # x[3] = np.zeros(x[3].shape, dtype=np.float32)
 
-    # MODIFIED
-    # x[0][:, 0:3] = 0.0
-    # x[0][:, 6:9] = 0.0
-    # x[0][:, 9:12] = 0.0
+        # MODIFIED
+        # x[0][:, 0:3] = 0.0
+        # x[0][:, 6:9] = 0.0
+        # x[0][:, 9:12] = 0.0
 
-    printer(x)
-    # raw_model.set_weights(x)
-    # raw_model.save(VALIDATION_MODEL)
+        # printer(x)
+        raw_model.set_weights(x)
+        raw_model.save("glstm_raw{0!s}.hdf5".format(t))

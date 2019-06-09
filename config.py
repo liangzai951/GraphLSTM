@@ -2,7 +2,7 @@ import keras.backend as K
 
 MODEL_PATH = "glstm.hdf5"
 EPOCHS = 200
-RAW_MODEL_PATH = "../data/checkpoints/modified.hdf5"
+RAW_MODEL_PATH = "glstm_raw.hdf5"
 VALIDATION_MODEL = "../data/checkpoints/model_50_0.82_0.90.hdf5"
 IMAGE_SHAPE = (250, 250, 3)
 SLIC_SHAPE = (IMAGE_SHAPE[0], IMAGE_SHAPE[1])
