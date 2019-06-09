@@ -36,13 +36,13 @@ if __name__ == '__main__':
 
     # TRUE
     x[0][:, 3:6] = -10.0
-    x[4][:, 3:6] = -10.0
+    # x[4][:, 3:6] = -10.0
     x[1] = np.zeros(x[1].shape, dtype=np.float32)
     x[2] = np.zeros(x[2].shape, dtype=np.float32)
     x[3] = np.zeros(x[3].shape, dtype=np.float32)
-    x[5] = np.zeros(x[5].shape, dtype=np.float32)
-    x[6] = np.zeros(x[6].shape, dtype=np.float32)
-    x[7] = np.zeros(x[7].shape, dtype=np.float32)
+    # x[5] = np.zeros(x[5].shape, dtype=np.float32)
+    # x[6] = np.zeros(x[6].shape, dtype=np.float32)
+    # x[7] = np.zeros(x[7].shape, dtype=np.float32)
 
     # MODIFIED
     # x[0][:, 0:3] = 0.0
