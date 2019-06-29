@@ -16,6 +16,9 @@ def average_rgb_for_superpixels(image, segments):
         av_local = []
         for c in range(filtered.shape[-1]):
             av_local.append(np.sum(filtered[:, :, c], axis=1).sum() / non_zero_pixels_amount)
+        i = av_local.index(max(av_local))
+        av_local = [0.0] * len(av_local)
+        av_local[i] = 1.0
         averages.append(av_local)
     while len(averages) != N_SUPERPIXELS:
         averages.append([0.0] * IMAGE_SHAPE[-1])
