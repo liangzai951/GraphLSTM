@@ -70,7 +70,7 @@ def generate_model():
 
         # OPTIMIZER
         # sgd = SGD(lr=0.001, momentum=0.9, decay=0.005, nesterov=False)
-        rms = RMSprop()
+        rms = RMSprop(decay=0.0005)
         model.compile(rms, loss="categorical_crossentropy", metrics=["acc"])
         model.save("glstm_raw{0!s}.hdf5".format(k))
 

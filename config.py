@@ -1,7 +1,7 @@
 import keras.backend as K
 
 MODEL_PATH = "glstm.hdf5"
-EPOCHS = 250
+EPOCHS = 500
 RAW_MODEL_PATH = "glstm_raw.hdf5"
 VALIDATION_MODEL = "../data/checkpoints/model_340_0.15_0.13_0.83_0.85.hdf5"
 IMAGE_SHAPE = (250, 250, 3)
