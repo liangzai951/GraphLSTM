@@ -52,7 +52,7 @@ def generator(image_list, images_path, expected_images, k, size=1):
 
             areas = get_superpixels_index_for_hot_areas(slic)
             for paths in range(k):
-                vertex_index = areas[paths]
+                vertex_index = random.choice(areas)
                 path, mapping, r_mapping = sort_values(vertices, neighbors,
                                                        vertex_index,
                                                        mode="bfs")

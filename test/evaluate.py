@@ -1,4 +1,5 @@
 import copy
+import random
 
 import numpy
 from keras.engine.saving import load_model
@@ -85,7 +86,7 @@ if __name__ == '__main__':
                     expected[i][-1] = 1.0
 
                 for paths in range(t):
-                    vertex_index = areas[paths]
+                    vertex_index = random.choice(areas)
                     path, mapping, r_mapping = sort_values(vertices, neighbors,
                                                            vertex_index,
                                                            mode="bfs")
